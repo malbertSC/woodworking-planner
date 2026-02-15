@@ -36,6 +36,16 @@ export default tseslint.config(
       ...react.configs.flat["jsx-runtime"].rules,
       ...reactHooks.configs["recommended-latest"].rules,
       ...jsxA11y.flatConfigs.recommended.rules,
+      "jsx-a11y/label-has-associated-control": [
+        "error",
+        { assert: "either", depth: 3 },
+      ],
+    },
+  },
+  {
+    files: ["**/__tests__/**/*.{ts,tsx}", "**/*.test.{ts,tsx}"],
+    rules: {
+      "@typescript-eslint/no-non-null-assertion": "off",
     },
   },
   eslintConfigPrettier,

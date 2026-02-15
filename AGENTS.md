@@ -7,6 +7,7 @@
 - Keep functions < 50 LoC
 - Keep files < 500 LoC
 - Classes/modules have a single responsibility. Split when new reasons to change appear.
+- Err on the side of keeping code DRY when possible.
 
 ## Definition of Done
 
