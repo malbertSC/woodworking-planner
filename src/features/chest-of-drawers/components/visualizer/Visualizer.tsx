@@ -6,17 +6,15 @@ import {
 } from "../../selectors.ts";
 import FrontView from "./FrontView.tsx";
 import SideView from "./SideView.tsx";
+import ThreeView from "./ThreeView.tsx";
+import { TOOLBAR_BTN, ZOOM_BTN } from "./svg-constants.ts";
 
-type ViewTab = "front" | "side";
+type ViewTab = "front" | "side" | "3d";
 
 const PADDING = 15;
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 3;
 const ZOOM_STEP = 0.25;
-
-const ZOOM_BTN = "px-2 py-1 text-sm border rounded hover:bg-stone-100";
-const TOOLBAR_BTN =
-  "px-2 py-1 text-xs border rounded hover:bg-stone-100 text-stone-500";
 
 export default function Visualizer() {
   const config = useChestStore((s) => s.config);
@@ -83,66 +81,83 @@ export default function Visualizer() {
               setActiveTab("side");
             }}
           />
-        </div>
-        <div className="flex items-center gap-2">
-          <button onClick={zoomOut} className={ZOOM_BTN} aria-label="Zoom out">
-            -
-          </button>
-          <button
+          <TabButton
+            label="3D"
+            active={activeTab === "3d"}
             onClick={() => {
-              setZoom(1);
+              setActiveTab("3d");
             }}
-            className="text-xs text-stone-600 min-w-[3rem] text-center cursor-pointer"
-            aria-label="Reset zoom to 100%"
-          >
-            {Math.round(zoom * 100)}%
-          </button>
-          <button onClick={zoomIn} className={ZOOM_BTN} aria-label="Zoom in">
-            +
-          </button>
-          <button
-            onClick={fitToView}
-            className={TOOLBAR_BTN}
-            aria-label="Fit to view"
-          >
-            Fit
-          </button>
-          <button
-            onClick={() => {
-              setZoom(1);
-            }}
-            className={TOOLBAR_BTN}
-            aria-label="Reset zoom"
-          >
-            Reset
-          </button>
+          />
         </div>
+        {activeTab !== "3d" && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={zoomOut}
+              className={ZOOM_BTN}
+              aria-label="Zoom out"
+            >
+              -
+            </button>
+            <button
+              onClick={() => {
+                setZoom(1);
+              }}
+              className="text-xs text-stone-600 min-w-[3rem] text-center cursor-pointer"
+              aria-label="Reset zoom to 100%"
+            >
+              {Math.round(zoom * 100)}%
+            </button>
+            <button onClick={zoomIn} className={ZOOM_BTN} aria-label="Zoom in">
+              +
+            </button>
+            <button
+              onClick={fitToView}
+              className={TOOLBAR_BTN}
+              aria-label="Fit to view"
+            >
+              Fit
+            </button>
+            <button
+              onClick={() => {
+                setZoom(1);
+              }}
+              className={TOOLBAR_BTN}
+              aria-label="Reset zoom"
+            >
+              Reset
+            </button>
+          </div>
+        )}
       </div>
 
       <div ref={containerRef} className="flex-1 overflow-auto bg-white">
-        <svg
-          role="img"
-          aria-label={`Chest of drawers ${activeTab} view`}
-          width="100%"
-          height="100%"
-          viewBox={`${String(offsetX)} ${String(offsetY)} ${String(scaledW)} ${String(scaledH)}`}
-          preserveAspectRatio="xMidYMid meet"
-          onWheel={handleWheel}
-          className="min-h-[300px]"
-        >
-          <title>{`Chest of drawers — ${activeTab} view`}</title>
-          <g transform={`translate(${String(PADDING)}, ${String(PADDING)})`}>
-            {activeTab === "front" ? (
-              <FrontView
-                config={config}
-                carcass={carcass}
-                drawerBoxes={drawerBoxes}
-              />
-            ) : (
-              <SideView config={config} carcass={carcass} />
-            )}
-          </g>
-        </svg>
+        {activeTab === "3d" ? (
+          <ThreeView />
+        ) : (
+          <svg
+            role="img"
+            aria-label={`Chest of drawers ${activeTab} view`}
+            width="100%"
+            height="100%"
+            viewBox={`${String(offsetX)} ${String(offsetY)} ${String(scaledW)} ${String(scaledH)}`}
+            preserveAspectRatio="xMidYMid meet"
+            onWheel={handleWheel}
+            className="min-h-[300px]"
+          >
+            <title>{`Chest of drawers — ${activeTab} view`}</title>
+            <g transform={`translate(${String(PADDING)}, ${String(PADDING)})`}>
+              {activeTab === "front" ? (
+                <FrontView
+                  config={config}
+                  carcass={carcass}
+                  drawerBoxes={drawerBoxes}
+                />
+              ) : (
+                <SideView config={config} carcass={carcass} />
+              )}
+            </g>
+          </svg>
+        )}
       </div>
     </div>
   );

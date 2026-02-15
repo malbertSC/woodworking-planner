@@ -48,5 +48,11 @@ export default tseslint.config(
       "@typescript-eslint/no-non-null-assertion": "off",
     },
   },
+  {
+    files: ["**/ThreeView.tsx", "**/DrawerGroup.tsx", "**/three/**/*.tsx"],
+    rules: {
+      "react/no-unknown-property": "off",
+    },
+  },
   eslintConfigPrettier,
 );

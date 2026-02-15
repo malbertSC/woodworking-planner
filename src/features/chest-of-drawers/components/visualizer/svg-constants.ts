@@ -1,6 +1,11 @@
 import type { Unit, WoodThickness } from "../../types.ts";
 import { formatDimension } from "../../calculations/units.ts";
 
+export const TOOLBAR_BTN =
+  "px-2 py-1 text-xs border rounded hover:bg-stone-100 text-stone-500";
+
+export const ZOOM_BTN = "px-2 py-1 text-sm border rounded hover:bg-stone-100";
+
 export const COLORS = {
   carcassFill: "#D4A574",
   carcassStroke: "#8B6914",
