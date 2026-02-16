@@ -9,6 +9,7 @@ import SideView from "./SideView.tsx";
 import ThreeView from "./ThreeView.tsx";
 import SlideLayoutView, { computeSlideLayoutSize } from "./SlideLayoutView.tsx";
 import { TOOLBAR_BTN, ZOOM_BTN } from "./svg-constants.ts";
+import { useSvgTooltip, SvgTooltipOverlay } from "./SvgTooltip.tsx";
 
 type ViewTab = "front" | "side" | "3d" | "slides";
 
@@ -25,6 +26,7 @@ export default function Visualizer() {
 
   const carcass = useMemo(() => selectCarcassDimensions(config), [config]);
   const drawerBoxes = useMemo(() => selectAllDrawerBoxes(config), [config]);
+  const { tooltip, tt } = useSvgTooltip(containerRef);
   const slideLayout = useMemo(
     () => computeSlideLayoutSize(config, carcass, drawerBoxes),
     [config, carcass, drawerBoxes],
@@ -150,7 +152,10 @@ export default function Visualizer() {
         )}
       </div>
 
-      <div ref={containerRef} className="flex-1 overflow-auto bg-white">
+      <div
+        ref={containerRef}
+        className="relative flex-1 overflow-auto bg-white"
+      >
         {activeTab === "3d" ? (
           <ThreeView />
         ) : (
@@ -171,19 +176,22 @@ export default function Visualizer() {
                   config={config}
                   carcass={carcass}
                   drawerBoxes={drawerBoxes}
+                  tt={tt}
                 />
               ) : activeTab === "side" ? (
-                <SideView config={config} carcass={carcass} />
+                <SideView config={config} carcass={carcass} tt={tt} />
               ) : (
                 <SlideLayoutView
                   config={config}
                   carcass={carcass}
                   drawerBoxes={drawerBoxes}
+                  tt={tt}
                 />
               )}
             </g>
           </svg>
         )}
+        {activeTab !== "3d" && <SvgTooltipOverlay tooltip={tooltip} />}
       </div>
     </div>
   );

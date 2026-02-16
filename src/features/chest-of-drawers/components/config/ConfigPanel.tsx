@@ -25,7 +25,7 @@ export default function ConfigPanel() {
         <ColumnRowConfig />
       </CollapsibleSection>
 
-      <CollapsibleSection title="Drawer Bin Heights">
+      <CollapsibleSection title="Drawer Heights">
         <DrawerHeightConfig />
       </CollapsibleSection>
 

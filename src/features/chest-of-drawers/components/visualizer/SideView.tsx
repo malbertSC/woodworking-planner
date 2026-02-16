@@ -2,13 +2,15 @@ import type { CarcassDimensions, ChestConfig } from "../../types.ts";
 import DimensionLine from "./DimensionLine.tsx";
 import InsetRect from "./InsetRect.tsx";
 import { COLORS, DIM_OFFSET, fmt, fmtPanel } from "./svg-constants.ts";
+import { HoverRect, type TooltipHandlers } from "./SvgTooltip.tsx";
 
 interface SideViewProps {
   config: ChestConfig;
   carcass: CarcassDimensions;
+  tt: TooltipHandlers;
 }
 
-export default function SideView({ config, carcass }: SideViewProps) {
+export default function SideView({ config, carcass, tt }: SideViewProps) {
   const topBottomWood = config.woodAssignments.carcassTopBottom;
   const topT = topBottomWood.actual;
   const { unit } = config;
@@ -113,6 +115,35 @@ export default function SideView({ config, carcass }: SideViewProps) {
         sublabel={panelDim.sublabel}
         offset={DIM_OFFSET / 2}
         orientation="vertical"
+      />
+
+      {/* Hover targets */}
+      <HoverRect
+        x={0}
+        y={topT}
+        width={carcass.outerDepth}
+        height={carcass.outerHeight - 2 * topT}
+        label="Side Panel"
+        dims={`${fmt(carcass.outerDepth, unit)} \u00d7 ${fmt(carcass.outerHeight - 2 * topT, unit)}`}
+        tt={tt}
+      />
+      <HoverRect
+        x={0}
+        y={0}
+        width={carcass.outerDepth}
+        height={topT}
+        label="Top Panel"
+        dims={`${fmt(carcass.outerDepth, unit)} \u00d7 ${fmt(topT, unit)}`}
+        tt={tt}
+      />
+      <HoverRect
+        x={0}
+        y={carcass.outerHeight - topT}
+        width={carcass.outerDepth}
+        height={topT}
+        label="Bottom Panel"
+        dims={`${fmt(carcass.outerDepth, unit)} \u00d7 ${fmt(topT, unit)}`}
+        tt={tt}
       />
     </g>
   );

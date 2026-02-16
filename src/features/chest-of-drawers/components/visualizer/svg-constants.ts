@@ -11,6 +11,7 @@ export const COLORS = {
   carcassStroke: "#8B6914",
   faceFill: "#C4956A",
   openingFill: "#F5E6D3",
+  revealFill: "#222222",
   slideFill: "#94A3B8",
   slideStroke: "#64748B",
   boxFill: "#E8D5B7",

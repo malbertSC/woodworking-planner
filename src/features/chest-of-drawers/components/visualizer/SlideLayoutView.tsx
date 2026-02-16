@@ -8,11 +8,13 @@ import { getColumnInnerHeight } from "../../calculations/carcass.ts";
 import DimensionLine from "./DimensionLine.tsx";
 import InsetRect from "./InsetRect.tsx";
 import { COLORS, DIM_OFFSET, LABEL_FONT_SIZE, fmt } from "./svg-constants.ts";
+import { HoverRect, type TooltipHandlers } from "./SvgTooltip.tsx";
 
 interface SlideLayoutViewProps {
   config: ChestConfig;
   carcass: CarcassDimensions;
   drawerBoxes: DrawerBoxDimensions[];
+  tt: TooltipHandlers;
 }
 
 /** Visual height of the slide band in the diagram (inches). */
@@ -69,12 +71,14 @@ function CarcassPanel({
   carcass,
   x,
   y,
+  tt,
 }: {
   column: Column;
   config: ChestConfig;
   carcass: CarcassDimensions;
   x: number;
   y: number;
+  tt: TooltipHandlers;
 }) {
   const { unit } = config;
   const colInnerHeight = getColumnInnerHeight(column, config);
@@ -156,6 +160,29 @@ function CarcassPanel({
         offset={(nonZeroPositions.length + 1) * DIM_OFFSET}
         orientation="vertical"
       />
+
+      {/* Hover targets */}
+      <HoverRect
+        width={panelWidth}
+        height={colInnerHeight}
+        label="Carcass Side Panel"
+        dims={`${fmt(panelWidth, unit)} \u00d7 ${fmt(colInnerHeight, unit)}`}
+        tt={tt}
+      />
+      {positions.map((pos) => {
+        const bandY = colInnerHeight - pos.distanceFromBottom - bandH;
+        return (
+          <HoverRect
+            key={`slide-hover-${pos.rowId}`}
+            y={bandY}
+            width={panelWidth}
+            height={bandH}
+            label={`Slide Position (Row ${String(pos.rowIndex + 1)})`}
+            dims={`${fmt(pos.distanceFromBottom, unit)} from bottom`}
+            tt={tt}
+          />
+        );
+      })}
     </g>
   );
 }
@@ -167,6 +194,7 @@ function DrawerBoxStack({
   x,
   y,
   panelHeight,
+  tt,
 }: {
   column: Column;
   config: ChestConfig;
@@ -174,6 +202,7 @@ function DrawerBoxStack({
   x: number;
   y: number;
   panelHeight: number;
+  tt: TooltipHandlers;
 }) {
   const { unit } = config;
 
@@ -249,6 +278,23 @@ function DrawerBoxStack({
             >
               Row {String(rowIndex + 1)}
             </text>
+
+            {/* Hover targets */}
+            <HoverRect
+              width={box.sideLength}
+              height={box.sideHeight}
+              label={`Drawer Box (Row ${String(rowIndex + 1)})`}
+              dims={`${fmt(box.sideLength, unit)} \u00d7 ${fmt(box.sideHeight, unit)}`}
+              tt={tt}
+            />
+            <HoverRect
+              y={box.sideHeight - boxBandH}
+              width={box.sideLength}
+              height={boxBandH}
+              label={`Slide Band (Row ${String(rowIndex + 1)})`}
+              dims={fmt(boxBandH, unit)}
+              tt={tt}
+            />
           </g>
         );
       })}
@@ -317,6 +363,7 @@ export default function SlideLayoutView({
   config,
   carcass,
   drawerBoxes,
+  tt,
 }: SlideLayoutViewProps) {
   const multiColumn = config.columns.length > 1;
 
@@ -362,6 +409,7 @@ export default function SlideLayoutView({
               carcass={carcass}
               x={dimLeftMargin}
               y={labelOffset}
+              tt={tt}
             />
 
             <DrawerBoxStack
@@ -371,6 +419,7 @@ export default function SlideLayoutView({
               x={dimLeftMargin + carcass.innerDepth + DIAGRAM_GAP}
               y={labelOffset}
               panelHeight={colInnerHeight}
+              tt={tt}
             />
           </g>
         );

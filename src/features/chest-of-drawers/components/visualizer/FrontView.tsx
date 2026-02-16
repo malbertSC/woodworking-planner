@@ -14,11 +14,13 @@ import {
   fmt,
   fmtPanel,
 } from "./svg-constants.ts";
+import { HoverRect, type TooltipHandlers } from "./SvgTooltip.tsx";
 
 interface FrontViewProps {
   config: ChestConfig;
   carcass: CarcassDimensions;
   drawerBoxes: DrawerBoxDimensions[];
+  tt: TooltipHandlers;
 }
 
 function CarcassRect({ width, height }: { width: number; height: number }) {
@@ -59,53 +61,13 @@ function Dividers({
   return (
     <>
       {dividers.map((d) => (
-        <rect
+        <InsetRect
           key={`div-${String(d.x)}`}
           x={d.x}
           y={topThickness}
           width={dividerThickness}
           height={innerHeight}
-          fill={COLORS.carcassFill}
-          stroke={COLORS.carcassStroke}
-          strokeWidth={0.25}
-        />
-      ))}
-    </>
-  );
-}
-
-function HorizontalRails({ config }: { config: ChestConfig }) {
-  if (!config.horizontalRails.enabled) return null;
-
-  const sideThickness = config.woodAssignments.carcassSides.actual;
-  const topThickness = config.woodAssignments.carcassTopBottom.actual;
-  const dividerThickness = config.woodAssignments.carcassDividers.actual;
-  const railThickness = config.horizontalRails.thickness.actual;
-
-  const rails: { x: number; y: number; width: number }[] = [];
-  let xPos = sideThickness;
-
-  for (const col of config.columns) {
-    let yPos = topThickness;
-    for (const [r, row] of col.rows.entries()) {
-      if (r >= col.rows.length - 1) break;
-      yPos += row.openingHeight;
-      rails.push({ x: xPos, y: yPos, width: col.openingWidth });
-      yPos += railThickness;
-    }
-    xPos += col.openingWidth + dividerThickness;
-  }
-
-  return (
-    <>
-      {rails.map((rail) => (
-        <rect
-          key={`rail-${String(rail.x)}-${String(rail.y)}`}
-          x={rail.x}
-          y={rail.y}
-          width={rail.width}
-          height={railThickness}
-          fill={COLORS.carcassFill}
+          fill={COLORS.carcassStroke}
           stroke={COLORS.carcassStroke}
           strokeWidth={0.25}
         />
@@ -153,25 +115,6 @@ function computeOpenings(config: ChestConfig): OpeningRect[] {
   return openings;
 }
 
-function DrawerOpenings({ openings }: { openings: OpeningRect[] }) {
-  return (
-    <>
-      {openings.map((o) => (
-        <rect
-          key={`${o.columnId}-${o.rowId}`}
-          x={o.x}
-          y={o.y}
-          width={o.width}
-          height={o.height}
-          fill={COLORS.openingFill}
-          stroke={COLORS.carcassStroke}
-          strokeWidth={0.25}
-        />
-      ))}
-    </>
-  );
-}
-
 function DrawerFaces({
   openings,
   drawerBoxes,
@@ -200,9 +143,6 @@ function DrawerFaces({
               width={box.faceWidth}
               height={box.faceHeight}
               fill={COLORS.faceFill}
-              stroke={COLORS.carcassStroke}
-              strokeWidth={0.5}
-              rx={0.25}
             />
             <text
               x={faceX + box.faceWidth / 2}
@@ -466,28 +406,77 @@ function ColumnHeightMismatch({
   );
 }
 
-function RevealDimensions({
+function DividerDimensions({
   config,
   carcass,
-  openings,
-  drawerBoxes,
 }: {
   config: ChestConfig;
   carcass: CarcassDimensions;
-  openings: OpeningRect[];
-  drawerBoxes: DrawerBoxDimensions[];
 }) {
+  const { unit } = config;
+  const sideT = config.woodAssignments.carcassSides.actual;
+  const dividerT = config.woodAssignments.carcassDividers.actual;
+
+  if (config.columns.length < 2) return null;
+
+  const dividers: { x1: number; x2: number }[] = [];
+  let xPos = sideT;
+  for (let i = 0; i < config.columns.length - 1; i++) {
+    const col = config.columns[i];
+    if (!col) continue;
+    xPos += col.openingWidth;
+    dividers.push({ x1: xPos, x2: xPos + dividerT });
+    xPos += dividerT;
+  }
+
+  const divPanel = fmtPanel(config.woodAssignments.carcassDividers, unit);
+
+  return (
+    <>
+      {dividers.map((d, i) => (
+        <DimensionLine
+          key={`div-${String(i)}`}
+          x1={d.x1}
+          y1={carcass.outerHeight}
+          x2={d.x2}
+          y2={carcass.outerHeight}
+          label={divPanel.label}
+          sublabel={divPanel.sublabel}
+          offset={DIM_OFFSET / 2}
+          orientation="horizontal"
+        />
+      ))}
+    </>
+  );
+}
+
+function FrontViewHoverTargets({
+  config,
+  carcass,
+  drawerBoxes,
+  tt,
+}: FrontViewProps) {
   const { unit } = config;
   const topT = config.woodAssignments.carcassTopBottom.actual;
   const sideT = config.woodAssignments.carcassSides.actual;
   const dividerT = config.woodAssignments.carcassDividers.actual;
+  const railT = config.horizontalRails.enabled
+    ? config.horizontalRails.thickness.actual
+    : 0;
+  const innerHeight = carcass.outerHeight - 2 * topT;
+  const multiCol = config.columns.length > 1;
 
-  // Compute face rectangles
+  const openings = computeOpenings(config);
+
+  // Compute face rects per opening
   const faces = openings.flatMap((o) => {
     const box = drawerBoxes.find(
       (b) => b.columnId === o.columnId && b.rowId === o.rowId,
     );
     if (!box) return [];
+    const colIdx = config.columns.findIndex((c) => c.id === o.columnId);
+    const col = config.columns[colIdx];
+    const rowIdx = col ? col.rows.findIndex((r) => r.id === o.rowId) : 0;
     return [
       {
         x: o.x + (o.width - box.faceWidth) / 2,
@@ -496,126 +485,298 @@ function RevealDimensions({
         height: box.faceHeight,
         columnId: o.columnId,
         rowId: o.rowId,
+        colIdx,
+        rowIdx,
       },
     ];
   });
 
-  if (faces.length === 0) return null;
+  // Divider positions
+  const dividers: { x: number }[] = [];
+  let xp = sideT;
+  for (const [i, col] of config.columns.entries()) {
+    if (i >= config.columns.length - 1) break;
+    xp += col.openingWidth;
+    dividers.push({ x: xp });
+    xp += dividerT;
+  }
 
-  // First column faces for vertical reveals
-  const firstCol = config.columns[0];
-  if (!firstCol) return null;
-  const colFaces = faces
-    .filter((f) => f.columnId === firstCol.id)
-    .sort((a, b) => a.y - b.y);
-
-  // First row faces for horizontal reveals
-  const firstRow = firstCol.rows[0];
-  const rowFaces = firstRow
-    ? faces.filter((f) => f.rowId === firstRow.id).sort((a, b) => a.x - b.x)
-    : [];
-
-  // Vertical reveal gaps (from panel inner edge, not carcass outer edge)
-  const vReveals: { y1: number; y2: number }[] = [];
-  const firstFace = colFaces[0];
-  if (firstFace) {
-    const topGap = firstFace.y - topT;
-    if (topGap > 0.001) vReveals.push({ y1: topT, y2: firstFace.y });
-
-    for (let i = 0; i < colFaces.length - 1; i++) {
-      const cur = colFaces[i];
-      const next = colFaces[i + 1];
-      if (!cur || !next) continue;
-      const y1 = cur.y + cur.height;
-      const y2 = next.y;
-      if (y2 - y1 > 0.001) vReveals.push({ y1, y2 });
-    }
-
-    const last = colFaces[colFaces.length - 1];
-    if (last) {
-      const botY1 = last.y + last.height;
-      const botY2 = carcass.outerHeight - topT;
-      if (botY2 - botY1 > 0.001) vReveals.push({ y1: botY1, y2: botY2 });
+  // Rail positions
+  const rails: { x: number; y: number; width: number }[] = [];
+  if (config.horizontalRails.enabled) {
+    let rx = sideT;
+    for (const col of config.columns) {
+      let ry = topT;
+      for (const [r, row] of col.rows.entries()) {
+        if (r >= col.rows.length - 1) break;
+        ry += row.openingHeight;
+        rails.push({ x: rx, y: ry, width: col.openingWidth });
+        ry += railT;
+      }
+      rx += col.openingWidth + dividerT;
     }
   }
 
-  // Divider positions (for bottom structural chain)
-  const dividers: { x1: number; x2: number }[] = [];
-  if (config.columns.length > 1) {
-    let xPos = sideT;
-    for (let i = 0; i < config.columns.length - 1; i++) {
-      const col = config.columns[i];
-      if (!col) continue;
-      xPos += col.openingWidth;
-      dividers.push({ x1: xPos, x2: xPos + dividerT });
-      xPos += dividerT;
+  // Dead space gaps
+  const gaps = computeColumnGaps(config, carcass);
+
+  // Vertical reveal rects for each column
+  const vRevealRects: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    label: string;
+  }[] = [];
+  let colX = sideT;
+  for (const [ci, col] of config.columns.entries()) {
+    const colFaces = faces
+      .filter((f) => f.columnId === col.id)
+      .sort((a, b) => a.y - b.y);
+
+    if (colFaces.length > 0) {
+      const first = colFaces[0];
+      if (first) {
+        const topGap = first.y - topT;
+        if (topGap > 0.001) {
+          vRevealRects.push({
+            x: colX,
+            y: topT,
+            width: col.openingWidth,
+            height: topGap,
+            label: `Top Reveal${multiCol ? ` (Col ${String(ci + 1)})` : ""}`,
+          });
+        }
+      }
+
+      for (let i = 0; i < colFaces.length - 1; i++) {
+        const cur = colFaces[i];
+        const next = colFaces[i + 1];
+        if (!cur || !next) continue;
+        const y1 = cur.y + cur.height;
+        const y2 = next.y;
+        if (y2 - y1 > 0.001) {
+          vRevealRects.push({
+            x: colX,
+            y: y1,
+            width: col.openingWidth,
+            height: y2 - y1,
+            label: `Reveal${multiCol ? ` (Col ${String(ci + 1)})` : ""}`,
+          });
+        }
+      }
+
+      const last = colFaces[colFaces.length - 1];
+      if (last) {
+        const botY1 = last.y + last.height;
+        const botY2 = carcass.outerHeight - topT;
+        if (botY2 - botY1 > 0.001) {
+          vRevealRects.push({
+            x: colX,
+            y: botY1,
+            width: col.openingWidth,
+            height: botY2 - botY1,
+            label: `Bottom Reveal${multiCol ? ` (Col ${String(ci + 1)})` : ""}`,
+          });
+        }
+      }
     }
+
+    colX += col.openingWidth + dividerT;
   }
 
-  // Horizontal between-column reveal gaps
-  const hReveals: { x1: number; x2: number }[] = [];
-  if (rowFaces.length > 1) {
+  // Horizontal reveal rects between faces across columns (first row)
+  const hRevealRects: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }[] = [];
+  if (multiCol) {
+    const rowFaces: (typeof faces)[number][] = [];
+    for (const col of config.columns) {
+      const firstRow = col.rows[0];
+      if (!firstRow) continue;
+      const face = faces.find(
+        (f) => f.columnId === col.id && f.rowId === firstRow.id,
+      );
+      if (face) rowFaces.push(face);
+    }
+    rowFaces.sort((a, b) => a.x - b.x);
+
     for (let i = 0; i < rowFaces.length - 1; i++) {
       const cur = rowFaces[i];
       const next = rowFaces[i + 1];
       if (!cur || !next) continue;
       const x1 = cur.x + cur.width;
       const x2 = next.x;
-      if (x2 - x1 > 0.001) hReveals.push({ x1, x2 });
+      if (x2 - x1 > 0.001) {
+        const minY = Math.min(cur.y, next.y);
+        const maxY = Math.max(cur.y + cur.height, next.y + next.height);
+        hRevealRects.push({
+          x: x1,
+          y: minY,
+          width: x2 - x1,
+          height: maxY - minY,
+        });
+      }
     }
   }
 
-  const divPanel =
-    dividers.length > 0
-      ? fmtPanel(config.woodAssignments.carcassDividers, unit)
-      : null;
+  const faceLabel = (f: (typeof faces)[number]): string => {
+    if (multiCol)
+      return `Drawer Face (Col ${String(f.colIdx + 1)}, Row ${String(f.rowIdx + 1)})`;
+    const firstCol = config.columns[0];
+    if (firstCol && firstCol.rows.length > 1)
+      return `Drawer Face (Row ${String(f.rowIdx + 1)})`;
+    return "Drawer Face";
+  };
 
   return (
-    <>
-      {/* Vertical reveals on right side */}
-      {vReveals.map((r, i) => (
-        <DimensionLine
-          key={`vr-${String(i)}`}
-          x1={carcass.outerWidth}
-          y1={r.y1}
-          x2={carcass.outerWidth}
-          y2={r.y2}
-          label={fmt(r.y2 - r.y1, unit)}
-          offset={-DIM_OFFSET / 2}
-          orientation="vertical"
-        />
-      ))}
-
-      {/* Divider thicknesses at bottom (same row as column widths) */}
-      {divPanel &&
-        dividers.map((d, i) => (
-          <DimensionLine
-            key={`div-${String(i)}`}
-            x1={d.x1}
-            y1={carcass.outerHeight}
-            x2={d.x2}
-            y2={carcass.outerHeight}
-            label={divPanel.label}
-            sublabel={divPanel.sublabel}
-            offset={DIM_OFFSET / 2}
-            orientation="horizontal"
+    <g>
+      {/* Layer 1: Openings — show per-opening reveal dims */}
+      {openings.map((o) => {
+        const box = drawerBoxes.find(
+          (b) => b.columnId === o.columnId && b.rowId === o.rowId,
+        );
+        const hRev = box ? (o.width - box.faceWidth) / 2 : 0;
+        const vRev = box ? (o.height - box.faceHeight) / 2 : 0;
+        return (
+          <HoverRect
+            key={`o-${o.columnId}-${o.rowId}`}
+            x={o.x}
+            y={o.y}
+            width={o.width}
+            height={o.height}
+            label={box ? "Reveal" : "Opening"}
+            dims={
+              box
+                ? `${fmt(hRev, unit)} H \u00d7 ${fmt(vRev, unit)} V per side`
+                : `${fmt(o.width, unit)} \u00d7 ${fmt(o.height, unit)}`
+            }
+            tt={tt}
           />
-        ))}
+        );
+      })}
 
-      {/* Horizontal between-column reveals at bottom (second row) */}
-      {hReveals.map((r, i) => (
-        <DimensionLine
-          key={`hr-${String(i)}`}
-          x1={r.x1}
-          y1={carcass.outerHeight}
-          x2={r.x2}
-          y2={carcass.outerHeight}
-          label={fmt(r.x2 - r.x1, unit)}
-          offset={DIM_OFFSET}
-          orientation="horizontal"
+      {/* Layer 2: Vertical reveal rects (between faces, spanning rails) */}
+      {vRevealRects.map((r, i) => (
+        <HoverRect
+          key={`vr-${String(i)}`}
+          x={r.x}
+          y={r.y}
+          width={r.width}
+          height={r.height}
+          label={r.label}
+          dims={fmt(r.height, unit)}
+          tt={tt}
         />
       ))}
-    </>
+
+      {/* Layer 3: Horizontal reveal rects (between faces across columns) */}
+      {hRevealRects.map((r, i) => (
+        <HoverRect
+          key={`hr-${String(i)}`}
+          x={r.x}
+          y={r.y}
+          width={r.width}
+          height={r.height}
+          label="Reveal"
+          dims={fmt(r.width, unit)}
+          tt={tt}
+        />
+      ))}
+
+      {/* Layer 4: Structural panels */}
+      <HoverRect
+        x={0}
+        y={0}
+        width={carcass.outerWidth}
+        height={topT}
+        label="Top Panel"
+        dims={`${fmt(carcass.outerWidth, unit)} \u00d7 ${fmt(topT, unit)}`}
+        tt={tt}
+      />
+      <HoverRect
+        x={0}
+        y={carcass.outerHeight - topT}
+        width={carcass.outerWidth}
+        height={topT}
+        label="Bottom Panel"
+        dims={`${fmt(carcass.outerWidth, unit)} \u00d7 ${fmt(topT, unit)}`}
+        tt={tt}
+      />
+      <HoverRect
+        x={0}
+        y={topT}
+        width={sideT}
+        height={innerHeight}
+        label="Left Side"
+        dims={`${fmt(sideT, unit)} \u00d7 ${fmt(innerHeight, unit)}`}
+        tt={tt}
+      />
+      <HoverRect
+        x={carcass.outerWidth - sideT}
+        y={topT}
+        width={sideT}
+        height={innerHeight}
+        label="Right Side"
+        dims={`${fmt(sideT, unit)} \u00d7 ${fmt(innerHeight, unit)}`}
+        tt={tt}
+      />
+      {dividers.map((d) => (
+        <HoverRect
+          key={`d-${String(d.x)}`}
+          x={d.x}
+          y={topT}
+          width={dividerT}
+          height={innerHeight}
+          label="Divider"
+          dims={`${fmt(dividerT, unit)} \u00d7 ${fmt(innerHeight, unit)}`}
+          tt={tt}
+        />
+      ))}
+      {rails.map((r) => (
+        <HoverRect
+          key={`r-${String(r.x)}-${String(r.y)}`}
+          x={r.x}
+          y={r.y}
+          width={r.width}
+          height={railT}
+          label="Horizontal Rail"
+          dims={`${fmt(r.width, unit)} \u00d7 ${fmt(railT, unit)}`}
+          tt={tt}
+        />
+      ))}
+
+      {/* Layer 5: Dead space gaps */}
+      {gaps.map((g) => (
+        <HoverRect
+          key={`gap-${g.columnId}`}
+          x={g.x}
+          y={g.y}
+          width={g.width}
+          height={g.height}
+          label="Dead Space"
+          dims={`${fmt(g.height, unit)} gap`}
+          tt={tt}
+        />
+      ))}
+
+      {/* Layer 6: Drawer faces (topmost — always wins when hovering a face) */}
+      {faces.map((f) => (
+        <HoverRect
+          key={`f-${f.columnId}-${f.rowId}`}
+          x={f.x}
+          y={f.y}
+          width={f.width}
+          height={f.height}
+          label={faceLabel(f)}
+          dims={`${fmt(f.width, unit)} \u00d7 ${fmt(f.height, unit)}`}
+          tt={tt}
+        />
+      ))}
+    </g>
   );
 }
 
@@ -623,20 +784,31 @@ export default function FrontView({
   config,
   carcass,
   drawerBoxes,
+  tt,
 }: FrontViewProps) {
   const openings = computeOpenings(config);
+  const topT = config.woodAssignments.carcassTopBottom.actual;
+  const sideT = config.woodAssignments.carcassSides.actual;
+  const innerW = carcass.outerWidth - 2 * sideT;
+  const innerH = carcass.outerHeight - 2 * topT;
 
   return (
     <g>
       <CarcassRect width={carcass.outerWidth} height={carcass.outerHeight} />
+      {/* Dark interior — all gaps/reveals between faces show as dark */}
+      <rect
+        x={sideT}
+        y={topT}
+        width={innerW}
+        height={innerH}
+        fill={COLORS.revealFill}
+      />
       <Dividers config={config} carcass={carcass} />
-      <HorizontalRails config={config} />
       <ColumnHeightMismatch
         config={config}
         carcass={carcass}
         unit={config.unit}
       />
-      <DrawerOpenings openings={openings} />
       <DrawerFaces
         openings={openings}
         drawerBoxes={drawerBoxes}
@@ -649,11 +821,12 @@ export default function FrontView({
         carcass={carcass}
         unit={config.unit}
       />
-      <RevealDimensions
+      <DividerDimensions config={config} carcass={carcass} />
+      <FrontViewHoverTargets
         config={config}
         carcass={carcass}
-        openings={openings}
         drawerBoxes={drawerBoxes}
+        tt={tt}
       />
     </g>
   );

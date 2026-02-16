@@ -68,14 +68,18 @@ function recomputeFromGridfinity(config: ChestConfig): ChestConfig {
     columns: config.columns.map((col) => ({
       ...col,
       openingWidth: computeOpeningWidth(col.gridWidthUnits, config),
-      rows: col.rows.map((row) => ({
-        ...row,
-        openingHeight: computeOpeningHeight(
-          row.binHeightUnits,
-          row.construction,
-          config,
-        ),
-      })),
+      rows: col.rows.map((row) =>
+        row.heightMode === "direct"
+          ? row
+          : {
+              ...row,
+              openingHeight: computeOpeningHeight(
+                row.binHeightUnits,
+                row.construction,
+                config,
+              ),
+            },
+      ),
     })),
   };
 }
@@ -304,6 +308,8 @@ interface ChestStore {
   setRowCount: (columnId: string, count: number) => void;
   setRowBinHeight: (columnId: string, rowId: string, binUnits: number) => void;
   setAllRowBinHeights: (binUnits: number) => void;
+  setRowDirectHeight: (columnId: string, rowId: string, height: number) => void;
+  resetRowToGridfinity: (columnId: string, rowId: string) => void;
   setRowConstruction: (
     columnId: string,
     rowId: string,
@@ -506,6 +512,7 @@ export const useChestStore = create<ChestStore>()(
                 ...col,
                 rows: updateRow(col.rows, rowId, (row) => ({
                   ...row,
+                  heightMode: undefined,
                   binHeightUnits: binUnits,
                   openingHeight: computeOpeningHeight(
                     binUnits,
@@ -535,9 +542,52 @@ export const useChestStore = create<ChestStore>()(
                 ...col,
                 rows: col.rows.map((row) => ({
                   ...row,
+                  heightMode: undefined,
                   binHeightUnits: binUnits,
                   openingHeight: computeOpeningHeight(
                     binUnits,
+                    row.construction,
+                    config,
+                  ),
+                })),
+              })),
+            },
+          };
+        });
+      },
+
+      setRowDirectHeight: (columnId, rowId, height) => {
+        set((state) => {
+          const { config } = state;
+          return {
+            config: {
+              ...config,
+              columns: updateColumn(config.columns, columnId, (col) => ({
+                ...col,
+                rows: updateRow(col.rows, rowId, (row) => ({
+                  ...row,
+                  heightMode: "direct" as const,
+                  openingHeight: height,
+                })),
+              })),
+            },
+          };
+        });
+      },
+
+      resetRowToGridfinity: (columnId, rowId) => {
+        set((state) => {
+          const { config } = state;
+          return {
+            config: {
+              ...config,
+              columns: updateColumn(config.columns, columnId, (col) => ({
+                ...col,
+                rows: updateRow(col.rows, rowId, (row) => ({
+                  ...row,
+                  heightMode: undefined,
+                  openingHeight: computeOpeningHeight(
+                    row.binHeightUnits,
                     row.construction,
                     config,
                   ),
@@ -693,12 +743,14 @@ export const useChestStore = create<ChestStore>()(
     }),
     {
       name: "chest-of-drawers-store",
-      version: 1,
+      version: 2,
       migrate: (persisted, version) => {
+        let data = persisted as Record<string, unknown>;
         if (version === 0) {
-          return migrateV0ToV1(persisted as Record<string, unknown>);
+          data = migrateV0ToV1(data);
         }
-        return persisted;
+        // v1→v2: added per-row heightMode (optional field, no data migration needed)
+        return data;
       },
     },
   ),

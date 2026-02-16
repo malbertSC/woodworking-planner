@@ -8,6 +8,8 @@ export interface Dimensions {
 
 export type DrawerStyle = "overlay" | "inset";
 
+export type DrawerHeightMode = "gridfinity" | "direct";
+
 export type DrawerBoxConstruction =
   | "dado"
   | "butt-through-sides"
@@ -55,6 +57,7 @@ export interface DrawerRow {
   id: string;
   openingHeight: number;
   binHeightUnits: number;
+  heightMode?: DrawerHeightMode | undefined;
   construction: DrawerBoxConstruction;
   woodOverride?: DrawerWoodOverride | undefined;
 }
