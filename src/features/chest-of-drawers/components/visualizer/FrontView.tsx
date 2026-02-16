@@ -504,6 +504,7 @@ function RevealDimensions({
 
   // First column faces for vertical reveals
   const firstCol = config.columns[0];
+  if (!firstCol) return null;
   const colFaces = faces
     .filter((f) => f.columnId === firstCol.id)
     .sort((a, b) => a.y - b.y);
@@ -516,20 +517,26 @@ function RevealDimensions({
 
   // Vertical reveal gaps (from panel inner edge, not carcass outer edge)
   const vReveals: { y1: number; y2: number }[] = [];
-  if (colFaces.length > 0) {
-    const topGap = colFaces[0].y - topT;
-    if (topGap > 0.001) vReveals.push({ y1: topT, y2: colFaces[0].y });
+  const firstFace = colFaces[0];
+  if (firstFace) {
+    const topGap = firstFace.y - topT;
+    if (topGap > 0.001) vReveals.push({ y1: topT, y2: firstFace.y });
 
     for (let i = 0; i < colFaces.length - 1; i++) {
-      const y1 = colFaces[i].y + colFaces[i].height;
-      const y2 = colFaces[i + 1].y;
+      const cur = colFaces[i];
+      const next = colFaces[i + 1];
+      if (!cur || !next) continue;
+      const y1 = cur.y + cur.height;
+      const y2 = next.y;
       if (y2 - y1 > 0.001) vReveals.push({ y1, y2 });
     }
 
     const last = colFaces[colFaces.length - 1];
-    const botY1 = last.y + last.height;
-    const botY2 = carcass.outerHeight - topT;
-    if (botY2 - botY1 > 0.001) vReveals.push({ y1: botY1, y2: botY2 });
+    if (last) {
+      const botY1 = last.y + last.height;
+      const botY2 = carcass.outerHeight - topT;
+      if (botY2 - botY1 > 0.001) vReveals.push({ y1: botY1, y2: botY2 });
+    }
   }
 
   // Divider positions (for bottom structural chain)
@@ -537,7 +544,9 @@ function RevealDimensions({
   if (config.columns.length > 1) {
     let xPos = sideT;
     for (let i = 0; i < config.columns.length - 1; i++) {
-      xPos += config.columns[i].openingWidth;
+      const col = config.columns[i];
+      if (!col) continue;
+      xPos += col.openingWidth;
       dividers.push({ x1: xPos, x2: xPos + dividerT });
       xPos += dividerT;
     }
@@ -547,8 +556,11 @@ function RevealDimensions({
   const hReveals: { x1: number; x2: number }[] = [];
   if (rowFaces.length > 1) {
     for (let i = 0; i < rowFaces.length - 1; i++) {
-      const x1 = rowFaces[i].x + rowFaces[i].width;
-      const x2 = rowFaces[i + 1].x;
+      const cur = rowFaces[i];
+      const next = rowFaces[i + 1];
+      if (!cur || !next) continue;
+      const x1 = cur.x + cur.width;
+      const x2 = next.x;
       if (x2 - x1 > 0.001) hReveals.push({ x1, x2 });
     }
   }

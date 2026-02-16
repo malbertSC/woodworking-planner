@@ -4,7 +4,7 @@ interface DimensionLineProps {
   x2: number;
   y2: number;
   label: string;
-  sublabel?: string;
+  sublabel?: string | undefined;
   offset: number;
   orientation: "horizontal" | "vertical";
   violated?: boolean;
@@ -29,7 +29,7 @@ function HorizontalDimensionLine({
   y: number;
   extY: number;
   label: string;
-  sublabel?: string;
+  sublabel?: string | undefined;
   violated: boolean;
 }) {
   const stroke = violated ? "#DC2626" : "#666";
@@ -119,7 +119,7 @@ function VerticalDimensionLine({
   x: number;
   extX: number;
   label: string;
-  sublabel?: string;
+  sublabel?: string | undefined;
   violated: boolean;
 }) {
   const stroke = violated ? "#DC2626" : "#666";

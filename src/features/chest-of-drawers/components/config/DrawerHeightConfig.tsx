@@ -83,7 +83,9 @@ function ColumnHeightMismatchWarning({ config }: { config: ChestConfig }) {
   const heights = config.columns.map((col) =>
     getColumnInnerHeight(col, config),
   );
-  const allEqual = heights.every((h) => h === heights[0]);
+  const firstHeight = heights[0];
+  const allEqual =
+    firstHeight !== undefined && heights.every((h) => h === firstHeight);
   if (allEqual) return null;
 
   const suffix = config.unit === "inches" ? '"' : "cm";
@@ -95,9 +97,10 @@ function ColumnHeightMismatchWarning({ config }: { config: ChestConfig }) {
         Column heights are not equal
       </p>
       <ul className="mt-1 space-y-0.5 text-xs">
-        {heights.map((h, i) => (
-          <li key={config.columns[i].id}>
-            Column {String(i + 1)}: {formatDimension(h, config.unit)}
+        {config.columns.map((col, i) => (
+          <li key={col.id}>
+            Column {String(i + 1)}:{" "}
+            {formatDimension(getColumnInnerHeight(col, config), config.unit)}
             {suffix}
           </li>
         ))}
