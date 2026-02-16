@@ -7,9 +7,10 @@ import {
 import FrontView from "./FrontView.tsx";
 import SideView from "./SideView.tsx";
 import ThreeView from "./ThreeView.tsx";
+import SlideLayoutView, { computeSlideLayoutSize } from "./SlideLayoutView.tsx";
 import { TOOLBAR_BTN, ZOOM_BTN } from "./svg-constants.ts";
 
-type ViewTab = "front" | "side" | "3d";
+type ViewTab = "front" | "side" | "3d" | "slides";
 
 const PADDING = 15;
 const MIN_ZOOM = 0.5;
@@ -24,9 +25,21 @@ export default function Visualizer() {
 
   const carcass = useMemo(() => selectCarcassDimensions(config), [config]);
   const drawerBoxes = useMemo(() => selectAllDrawerBoxes(config), [config]);
-  const contentWidth =
-    activeTab === "front" ? carcass.outerWidth : carcass.outerDepth;
-  const contentHeight = carcass.outerHeight;
+  const slideLayout = useMemo(
+    () => computeSlideLayoutSize(config, carcass, drawerBoxes),
+    [config, carcass, drawerBoxes],
+  );
+
+  let contentWidth: number;
+  let contentHeight: number;
+  if (activeTab === "slides") {
+    contentWidth = slideLayout.width;
+    contentHeight = slideLayout.height;
+  } else {
+    contentWidth =
+      activeTab === "front" ? carcass.outerWidth : carcass.outerDepth;
+    contentHeight = carcass.outerHeight;
+  }
 
   const viewBoxWidth = contentWidth + PADDING * 2;
   const viewBoxHeight = contentHeight + PADDING * 2;
@@ -79,6 +92,13 @@ export default function Visualizer() {
             active={activeTab === "side"}
             onClick={() => {
               setActiveTab("side");
+            }}
+          />
+          <TabButton
+            label="Slide Layout"
+            active={activeTab === "slides"}
+            onClick={() => {
+              setActiveTab("slides");
             }}
           />
           <TabButton
@@ -152,8 +172,14 @@ export default function Visualizer() {
                   carcass={carcass}
                   drawerBoxes={drawerBoxes}
                 />
-              ) : (
+              ) : activeTab === "side" ? (
                 <SideView config={config} carcass={carcass} />
+              ) : (
+                <SlideLayoutView
+                  config={config}
+                  carcass={carcass}
+                  drawerBoxes={drawerBoxes}
+                />
               )}
             </g>
           </svg>
