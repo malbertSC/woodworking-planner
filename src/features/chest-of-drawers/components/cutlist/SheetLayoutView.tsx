@@ -1,3 +1,5 @@
+import { useRef, useState } from "react";
+
 import { formatDimension } from "../../calculations/units.ts";
 import type { SheetLayout, Unit } from "../../types.ts";
 
@@ -35,6 +37,13 @@ function truncateLabel(text: string, maxWidth: number): string {
 const PADDING = 10;
 const HEADER_HEIGHT = 28;
 
+interface Tooltip {
+  label: string;
+  dims: string;
+  x: number;
+  y: number;
+}
+
 export default function SheetLayoutView({
   layout,
   sheetIndex,
@@ -44,11 +53,16 @@ export default function SheetLayoutView({
   const { sheet, placements, wastePercentage } = layout;
   const svgWidth = sheet.width + PADDING * 2;
   const svgHeight = sheet.height + PADDING * 2 + HEADER_HEIGHT;
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [tooltip, setTooltip] = useState<Tooltip | null>(null);
 
   const headerText = `Sheet ${String(sheetIndex + 1)} of ${String(totalSheets)} \u2014 ${sheet.label} \u2014 ${wastePercentage.toFixed(0)}% waste`;
 
   return (
-    <div className="rounded border border-stone-200 bg-white overflow-hidden">
+    <div
+      ref={containerRef}
+      className="relative rounded border border-stone-200 bg-white overflow-hidden"
+    >
       <svg
         viewBox={`0 0 ${String(svgWidth)} ${String(svgHeight)}`}
         className="w-full"
@@ -89,7 +103,38 @@ export default function SheetLayoutView({
           const nameLabel = truncateLabel(placement.piece.label, w);
 
           return (
-            <g key={i}>
+            <g
+              key={i}
+              onMouseEnter={(e) => {
+                const container = containerRef.current;
+                if (!container) return;
+                const rect = container.getBoundingClientRect();
+                setTooltip({
+                  label: placement.piece.label,
+                  dims: dimLabel,
+                  x: e.clientX - rect.left,
+                  y: e.clientY - rect.top,
+                });
+              }}
+              onMouseMove={(e) => {
+                const container = containerRef.current;
+                if (!container) return;
+                const rect = container.getBoundingClientRect();
+                setTooltip((prev) =>
+                  prev
+                    ? {
+                        ...prev,
+                        x: e.clientX - rect.left,
+                        y: e.clientY - rect.top,
+                      }
+                    : null,
+                );
+              }}
+              onMouseLeave={() => {
+                setTooltip(null);
+              }}
+              className="cursor-pointer"
+            >
               <rect
                 x={x}
                 y={y}
@@ -106,7 +151,7 @@ export default function SheetLayoutView({
                   textAnchor="middle"
                   dominantBaseline="middle"
                   fontSize={Math.min(5, w / 8)}
-                  className="fill-stone-800"
+                  className="fill-stone-800 pointer-events-none"
                 >
                   {nameLabel}
                 </text>
@@ -118,7 +163,7 @@ export default function SheetLayoutView({
                   textAnchor="middle"
                   dominantBaseline="middle"
                   fontSize={Math.min(4, w / 10)}
-                  className="fill-stone-600"
+                  className="fill-stone-600 pointer-events-none"
                 >
                   {dimLabel}
                 </text>
@@ -128,7 +173,7 @@ export default function SheetLayoutView({
                   x={x + 2}
                   y={y + 5}
                   fontSize="3.5"
-                  className="fill-stone-500"
+                  className="fill-stone-500 pointer-events-none"
                 >
                   R
                 </text>
@@ -137,6 +182,19 @@ export default function SheetLayoutView({
           );
         })}
       </svg>
+
+      {tooltip && (
+        <div
+          className="absolute pointer-events-none z-10 rounded bg-stone-800 px-2 py-1 text-xs text-white shadow-lg"
+          style={{
+            left: tooltip.x + 12,
+            top: tooltip.y - 8,
+          }}
+        >
+          <div className="font-medium">{tooltip.label}</div>
+          <div className="text-stone-300">{tooltip.dims}</div>
+        </div>
+      )}
     </div>
   );
 }
