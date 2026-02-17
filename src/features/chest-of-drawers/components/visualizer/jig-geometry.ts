@@ -1,19 +1,88 @@
 import { BoxGeometry, type BufferGeometry } from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import type { JigPanelSegment } from "../../calculations/jig.ts";
+import type { JigPanelSegment, JigZone } from "../../calculations/jig.ts";
 
 // ─── Constants (all in mm — STL standard) ────────────────────────────────────
 
 const CLIP_WALL_MM = 5;
 const CLIP_TOLERANCE_MM = 0.4;
 const CLIP_LIP_DEPTH_MM = 10;
-
-/** Height of the shiplap tongue that extends into the adjacent segment. */
-const JOINT_HEIGHT_MM = 10;
-/** Clearance between the two halves of the shiplap joint. */
-const JOINT_CLEARANCE_MM = 0.3;
+/** Small lip past panel face in gap zones for slide alignment. */
+const GAP_LIP_MM = 1;
 
 const INCHES_TO_MM = 25.4;
+
+// ─── Spine Z-width helpers ──────────────────────────────────────────────────
+
+interface SpineZone {
+  startY: number; // mm, relative to segment
+  height: number; // mm
+  zWidth: number; // mm
+  zCenter: number; // mm
+}
+
+/**
+ * Merge sideA and sideB zone lists to compute the spine Z-width at each
+ * Y interval. In gap regions the spine narrows to the panel slot width so
+ * it doesn't block the slides from opening.
+ */
+function computeSpineZones(
+  sideAZones: JigZone[],
+  sideBZones: JigZone[],
+  segHeightMm: number,
+  gapMm: number,
+  clipTotalZ: number,
+): SpineZone[] {
+  // Collect Y breakpoints (mm) from both side zone lists
+  const bps = new Set<number>();
+  bps.add(0);
+  bps.add(segHeightMm);
+  for (const z of sideAZones) {
+    bps.add(z.startY * INCHES_TO_MM);
+    bps.add((z.startY + z.height) * INCHES_TO_MM);
+  }
+  for (const z of sideBZones) {
+    bps.add(z.startY * INCHES_TO_MM);
+    bps.add((z.startY + z.height) * INCHES_TO_MM);
+  }
+
+  const sorted = [...bps].sort((a, b) => a - b);
+  const zones: SpineZone[] = [];
+
+  for (let i = 0; i < sorted.length - 1; i++) {
+    const startY = sorted[i] ?? 0;
+    const endY = sorted[i + 1] ?? 0;
+    const height = endY - startY;
+    if (height <= 0) continue;
+
+    const midInches = (startY + endY) / 2 / INCHES_TO_MM;
+
+    const sideAIsGap = sideAZones.some(
+      (z) =>
+        z.type === "gap" &&
+        midInches >= z.startY &&
+        midInches < z.startY + z.height,
+    );
+    const sideBIsGap = sideBZones.some(
+      (z) =>
+        z.type === "gap" &&
+        midInches >= z.startY &&
+        midInches < z.startY + z.height,
+    );
+
+    const zMin = sideAIsGap ? -gapMm / 2 - GAP_LIP_MM : -clipTotalZ / 2;
+    const zMax = sideBIsGap ? gapMm / 2 + GAP_LIP_MM : clipTotalZ / 2;
+
+    zones.push({
+      startY,
+      height,
+      zWidth: zMax - zMin,
+      zCenter: (zMin + zMax) / 2,
+    });
+  }
+
+  return zones;
+}
 
 /**
  * Build a Three.js BufferGeometry for one jig segment.
@@ -28,12 +97,13 @@ const INCHES_TO_MM = 25.4;
  *     If sideA has no zones, the inner wall is continuous (side panel outside).
  *   - sideB (Z+) outer wall: present only at sideB spacer zones.
  *     If sideB has no zones, the outer wall is continuous (side panel outside).
- *   - Bridge at the front edge: always continuous, carries the shiplap joint.
+ *   - Bridge at the front edge: continuous along Y, but narrows to panel-slot
+ *     width in gap zones so slides have clearance to open.
+ *   - Segments meet with a flat butt joint (the panel clip provides alignment).
  */
 export function buildJigSegmentGeometry(
   segment: JigPanelSegment,
   panelThicknessMm: number,
-  totalSegments: number,
 ): BufferGeometry {
   const segHeightMm = segment.height * INCHES_TO_MM;
   const gapMm = panelThicknessMm + CLIP_TOLERANCE_MM;
@@ -123,44 +193,36 @@ export function buildJigSegmentGeometry(
     );
   }
 
-  // ── 3. Edge bridge ──
-  // Always continuous — structural spine and shiplap joint carrier.
-  const hasJointAbove =
-    totalSegments > 1 && segment.segmentIndex < totalSegments - 1;
-  const hasJointBelow = totalSegments > 1 && segment.segmentIndex > 0;
+  // ── 3. Edge bridge (spine) ──
+  // Narrows to panel-slot width in gap zones so slides can open.
+  const spineZones = computeSpineZones(
+    segment.sideAZones,
+    segment.sideBZones,
+    segHeightMm,
+    gapMm,
+    clipTotalZ,
+  );
 
-  if (!hasJointAbove && !hasJointBelow) {
+  for (const sz of spineZones) {
     geometries.push(
       box(
         CLIP_WALL_MM,
-        segHeightMm,
-        clipTotalZ,
+        sz.height,
+        sz.zWidth,
         -CLIP_WALL_MM / 2,
-        segHeightMm / 2,
-        0,
+        sz.startY + sz.height / 2,
+        sz.zCenter,
       ),
     );
-  } else {
-    // Shiplap: split bridge into front/back halves along X.
-    // Front half extends upward; back half extends downward.
-    const halfX = (CLIP_WALL_MM - JOINT_CLEARANCE_MM) / 2;
+  }
 
-    // Front half (X- side of bridge)
-    const frontCenterX = -CLIP_WALL_MM + halfX / 2;
-    const frontBottom = hasJointBelow ? JOINT_HEIGHT_MM : 0;
-    const frontTop = segHeightMm + (hasJointAbove ? JOINT_HEIGHT_MM : 0);
-    const frontH = frontTop - frontBottom;
+  // ── 4. Bottom cap (first segment only) ──
+  // A plate that registers against the bottom edge of the panel.
+  if (segment.segmentIndex === 0) {
+    const capWidth = CLIP_WALL_MM + CLIP_LIP_DEPTH_MM;
+    const capCenterX = (-CLIP_WALL_MM + CLIP_LIP_DEPTH_MM) / 2;
     geometries.push(
-      box(halfX, frontH, clipTotalZ, frontCenterX, frontBottom + frontH / 2, 0),
-    );
-
-    // Back half (X+ side of bridge, closer to lip)
-    const backCenterX = -halfX / 2;
-    const backBottom = hasJointBelow ? -JOINT_HEIGHT_MM : 0;
-    const backTop = segHeightMm - (hasJointAbove ? JOINT_HEIGHT_MM : 0);
-    const backH = backTop - backBottom;
-    geometries.push(
-      box(halfX, backH, clipTotalZ, backCenterX, backBottom + backH / 2, 0),
+      box(capWidth, CLIP_WALL_MM, clipTotalZ, capCenterX, -CLIP_WALL_MM / 2, 0),
     );
   }
 

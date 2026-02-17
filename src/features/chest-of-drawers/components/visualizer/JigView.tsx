@@ -32,16 +32,11 @@ function JigMesh({
   edge: "front" | "back";
 }) {
   const rawSegment = layout.segments[segmentIndex];
-  const totalSegments = layout.segments.length;
   const geometry = useMemo(() => {
     if (!rawSegment) return null;
     const seg = edge === "back" ? flipSegment(rawSegment) : rawSegment;
-    return buildJigSegmentGeometry(
-      seg,
-      layout.panelThickness * INCHES_TO_MM,
-      totalSegments,
-    );
-  }, [rawSegment, layout.panelThickness, totalSegments, edge]);
+    return buildJigSegmentGeometry(seg, layout.panelThickness * INCHES_TO_MM);
+  }, [rawSegment, layout.panelThickness, edge]);
 
   if (!geometry) return null;
 
@@ -94,11 +89,10 @@ export default function JigView() {
   // Capture narrowed panel for use in closures (TS can't narrow across function boundaries)
   const currentPanel = panel;
   const panelThickMm = currentPanel.panelThickness * INCHES_TO_MM;
-  const totalSegs = currentPanel.segments.length;
 
   function buildSegGeometry(seg: JigPanelSegment) {
     const effective = edge === "back" ? flipSegment(seg) : seg;
-    return buildJigSegmentGeometry(effective, panelThickMm, totalSegs);
+    return buildJigSegmentGeometry(effective, panelThickMm);
   }
 
   function handleDownloadSegment() {

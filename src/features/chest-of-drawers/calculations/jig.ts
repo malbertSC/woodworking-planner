@@ -38,8 +38,8 @@ export interface JigPanelLayout {
 /** Physical height of the drawer slide profile (45mm in inches). */
 const SLIDE_PROFILE_HEIGHT = 45 / 25.4;
 
-/** Max print bed dimension in inches (256mm). */
-const MAX_SEGMENT_HEIGHT = 256 / 25.4;
+/** Max print bed dimension in inches (240mm). */
+const MAX_SEGMENT_HEIGHT = 240 / 25.4;
 
 // ─── Functions ───────────────────────────────────────────────────────────────
 
@@ -164,8 +164,66 @@ function clipZones(
 }
 
 /**
+ * Minimum margin (inches) to keep between a segment cut and the nearest
+ * spacer edge. Prevents fragile slivers at segment boundaries.
+ */
+const CUT_MARGIN = 2 / 25.4;
+
+interface Range {
+  start: number;
+  end: number;
+}
+
+/**
+ * Find Y ranges (inches) where a segment cut is safe — the cut falls
+ * within gap zones on all sides that have teeth, keeping CUT_MARGIN away
+ * from spacer edges to avoid fragile slivers.
+ */
+function findSafeCutRanges(
+  sideAZones: JigZone[],
+  sideBZones: JigZone[],
+  panelHeight: number,
+): Range[] {
+  function gapRanges(zones: JigZone[]): Range[] {
+    if (zones.length === 0) {
+      // No zones = continuous wall with no teeth; all positions safe.
+      return [{ start: 0, end: panelHeight }];
+    }
+    return zones
+      .filter((z) => z.type === "gap")
+      .map((z) => ({ start: z.startY, end: z.startY + z.height }));
+  }
+
+  const aGaps = gapRanges(sideAZones);
+  const bGaps = gapRanges(sideBZones);
+
+  // Intersect the two sorted range lists
+  const intersected: Range[] = [];
+  let ai = 0;
+  let bi = 0;
+  while (ai < aGaps.length && bi < bGaps.length) {
+    const a = aGaps[ai];
+    const b = bGaps[bi];
+    if (!a || !b) break;
+    const lo = Math.max(a.start, b.start);
+    const hi = Math.min(a.end, b.end);
+    if (hi > lo) intersected.push({ start: lo, end: hi });
+    if (a.end < b.end) ai++;
+    else bi++;
+  }
+
+  // Shrink each range by CUT_MARGIN on each side so the full joint
+  // region fits within the gap.
+  return intersected
+    .map((r) => ({ start: r.start + CUT_MARGIN, end: r.end - CUT_MARGIN }))
+    .filter((r) => r.end > r.start);
+}
+
+/**
  * Split two-sided zones into segments that fit within the max print bed
- * size (256mm). Each segment's zones have startY relative to the segment.
+ * size (240mm). Segment boundaries are placed in gap zones whenever
+ * possible so the shiplap joint doesn't weaken spacer attachment.
+ * Each segment's zones have startY relative to the segment.
  */
 function computeJigPanelSegments(
   panelHeight: number,
@@ -174,20 +232,76 @@ function computeJigPanelSegments(
 ): JigPanelSegment[] {
   if (panelHeight <= 0) return [];
 
-  const segmentCount = Math.ceil(panelHeight / MAX_SEGMENT_HEIGHT);
+  // Single segment — no cuts needed.
+  if (panelHeight <= MAX_SEGMENT_HEIGHT) {
+    return [
+      {
+        segmentIndex: 0,
+        startY: 0,
+        height: panelHeight,
+        sideAZones: clipZones(sideAZones, 0, panelHeight),
+        sideBZones: clipZones(sideBZones, 0, panelHeight),
+      },
+    ];
+  }
+
+  const safeRanges = findSafeCutRanges(sideAZones, sideBZones, panelHeight);
+
+  // Greedily select cuts from bottom to top.
+  const cuts: number[] = [];
+  let cursor = 0;
+
+  for (;;) {
+    const remaining = panelHeight - cursor;
+    if (remaining <= MAX_SEGMENT_HEIGHT) break; // last segment fits
+
+    const neededCuts = Math.ceil(remaining / MAX_SEGMENT_HEIGHT) - 1;
+    const idealSegHeight = remaining / (neededCuts + 1);
+    const idealCut = cursor + idealSegHeight;
+    const maxCut = cursor + MAX_SEGMENT_HEIGHT;
+    // Minimum cut position so the rest still fits in neededCuts segments.
+    const minCut = panelHeight - neededCuts * MAX_SEGMENT_HEIGHT;
+
+    // Find the safe range whose center is closest to the ideal cut.
+    let bestCut: number | null = null;
+    let bestDist = Infinity;
+
+    for (const range of safeRanges) {
+      const lo = Math.max(range.start, minCut);
+      const hi = Math.min(range.end, maxCut);
+      if (hi <= lo) continue;
+
+      const center = (lo + hi) / 2;
+      const dist = Math.abs(center - idealCut);
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestCut = center;
+      }
+    }
+
+    if (bestCut !== null) {
+      cuts.push(bestCut);
+      cursor = bestCut;
+    } else {
+      // No safe position available — fall back to ideal even split.
+      cuts.push(idealCut);
+      cursor = idealCut;
+    }
+  }
+
+  // Build segments from boundaries.
+  const boundaries = [0, ...cuts, panelHeight];
   const segments: JigPanelSegment[] = [];
 
-  for (let i = 0; i < segmentCount; i++) {
-    const segStartY = i * MAX_SEGMENT_HEIGHT;
-    const segHeight = Math.min(MAX_SEGMENT_HEIGHT, panelHeight - segStartY);
-    const segEndY = segStartY + segHeight;
-
+  for (let i = 0; i < boundaries.length - 1; i++) {
+    const startY = boundaries[i] ?? 0;
+    const endY = boundaries[i + 1] ?? 0;
     segments.push({
       segmentIndex: i,
-      startY: segStartY,
-      height: segHeight,
-      sideAZones: clipZones(sideAZones, segStartY, segEndY),
-      sideBZones: clipZones(sideBZones, segStartY, segEndY),
+      startY,
+      height: endY - startY,
+      sideAZones: clipZones(sideAZones, startY, endY),
+      sideBZones: clipZones(sideBZones, startY, endY),
     });
   }
 
