@@ -13,7 +13,7 @@ interface SheetLayoutViewProps {
 const PIECE_COLORS: Record<string, string> = {
   carcass: "#D4A574",
   "drawer-box": "#A3BE8C",
-  "drawer-face": "#C4956A",
+  "drawer-face": "#B5735A",
 };
 
 const DEFAULT_COLOR = "#D4A574";
