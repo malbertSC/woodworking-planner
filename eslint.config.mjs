@@ -49,7 +49,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ["**/ThreeView.tsx", "**/DrawerGroup.tsx", "**/three/**/*.tsx"],
+    files: ["**/ThreeView.tsx", "**/DrawerGroup.tsx", "**/JigView.tsx", "**/three/**/*.tsx"],
     rules: {
       "react/no-unknown-property": "off",
     },

@@ -5,6 +5,7 @@ import type {
   DrawerBoxDimensions,
 } from "../../types.ts";
 import { getColumnInnerHeight } from "../../calculations/carcass.ts";
+import { computeSlidePositions } from "../../calculations/jig.ts";
 import DimensionLine from "./DimensionLine.tsx";
 import InsetRect from "./InsetRect.tsx";
 import { COLORS, DIM_OFFSET, LABEL_FONT_SIZE, fmt } from "./svg-constants.ts";
@@ -27,43 +28,6 @@ const BOX_GAP = 2;
 const SECTION_GAP = 10;
 /** Height reserved for column section labels. */
 const SECTION_LABEL_HEIGHT = 3;
-
-interface SlidePosition {
-  rowId: string;
-  rowIndex: number;
-  distanceFromBottom: number;
-}
-
-function computeSlidePositions(
-  column: Column,
-  config: ChestConfig,
-): SlidePosition[] {
-  const { rows } = column;
-  if (rows.length === 0) return [];
-
-  const reversed = [...rows].reverse();
-  const railThickness = config.horizontalRails.enabled
-    ? config.horizontalRails.thickness.actual
-    : 0;
-
-  const positions: SlidePosition[] = [];
-  let cumulative = 0;
-
-  for (const [i, row] of reversed.entries()) {
-    const originalIndex = rows.length - 1 - i;
-    positions.push({
-      rowId: row.id,
-      rowIndex: originalIndex,
-      distanceFromBottom: cumulative,
-    });
-    cumulative += row.openingHeight;
-    if (i < reversed.length - 1) {
-      cumulative += railThickness;
-    }
-  }
-
-  return positions;
-}
 
 function CarcassPanel({
   column,

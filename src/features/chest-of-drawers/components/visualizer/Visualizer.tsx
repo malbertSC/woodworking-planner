@@ -7,11 +7,12 @@ import {
 import FrontView from "./FrontView.tsx";
 import SideView from "./SideView.tsx";
 import ThreeView from "./ThreeView.tsx";
+import JigView from "./JigView.tsx";
 import SlideLayoutView, { computeSlideLayoutSize } from "./SlideLayoutView.tsx";
 import { TOOLBAR_BTN, ZOOM_BTN } from "./svg-constants.ts";
 import { useSvgTooltip, SvgTooltipOverlay } from "./SvgTooltip.tsx";
 
-type ViewTab = "front" | "side" | "3d" | "slides";
+type ViewTab = "front" | "side" | "3d" | "slides" | "jig";
 
 const PADDING = 15;
 const MIN_ZOOM = 0.5;
@@ -110,8 +111,15 @@ export default function Visualizer() {
               setActiveTab("3d");
             }}
           />
+          <TabButton
+            label="Slide Jig"
+            active={activeTab === "jig"}
+            onClick={() => {
+              setActiveTab("jig");
+            }}
+          />
         </div>
-        {activeTab !== "3d" && (
+        {activeTab !== "3d" && activeTab !== "jig" && (
           <div className="flex items-center gap-2">
             <button
               onClick={zoomOut}
@@ -158,6 +166,8 @@ export default function Visualizer() {
       >
         {activeTab === "3d" ? (
           <ThreeView />
+        ) : activeTab === "jig" ? (
+          <JigView />
         ) : (
           <svg
             role="img"
@@ -191,7 +201,9 @@ export default function Visualizer() {
             </g>
           </svg>
         )}
-        {activeTab !== "3d" && <SvgTooltipOverlay tooltip={tooltip} />}
+        {activeTab !== "3d" && activeTab !== "jig" && (
+          <SvgTooltipOverlay tooltip={tooltip} />
+        )}
       </div>
     </div>
   );

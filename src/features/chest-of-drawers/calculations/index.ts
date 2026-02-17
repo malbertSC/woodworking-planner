@@ -23,3 +23,4 @@ export {
   getUniqueThicknesses,
 } from "./cutlist.ts";
 export { packPieces } from "./bin-packing.ts";
+export { computeSlidePositions, computeAllJigPanelLayouts } from "./jig.ts";
