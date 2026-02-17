@@ -8,6 +8,7 @@ import type {
   DrawerWarning,
   WoodThickness,
 } from "../types.ts";
+import { roundUpToNearestEighth } from "./gridfinity.ts";
 
 function getDrawerWood(
   row: DrawerRow,
@@ -191,10 +192,10 @@ export function calculateDrawerBox(
     sideHeight: result.sideHeight,
     frontBackLength,
     frontBackHeight: result.sideHeight,
-    bottomWidth: result.bottomWidth,
-    bottomDepth: result.bottomDepth,
-    faceWidth: face.width,
-    faceHeight: face.height,
+    bottomWidth: roundUpToNearestEighth(result.bottomWidth),
+    bottomDepth: roundUpToNearestEighth(result.bottomDepth),
+    faceWidth: roundUpToNearestEighth(face.width),
+    faceHeight: roundUpToNearestEighth(face.height),
     warnings: [],
   };
 
@@ -231,7 +232,8 @@ function calculateOverlayFaceWidth(
   const reveal = config.insetRevealGap;
 
   if (config.columns.length === 1) {
-    return column.openingWidth - reveal;
+    const sideThickness = config.woodAssignments.carcassSides.actual;
+    return column.openingWidth + 2 * sideThickness - reveal;
   }
 
   return column.openingWidth + dividerThickness - reveal;

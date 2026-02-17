@@ -1,6 +1,5 @@
 import type { CarcassDimensions, ChestConfig } from "../../types.ts";
 import DimensionLine from "./DimensionLine.tsx";
-import InsetRect from "./InsetRect.tsx";
 import { COLORS, DIM_OFFSET, fmt, fmtPanel } from "./svg-constants.ts";
 import { HoverRect, type TooltipHandlers } from "./SvgTooltip.tsx";
 
@@ -25,37 +24,31 @@ export default function SideView({ config, carcass, tt }: SideViewProps) {
 
   return (
     <g>
-      {/* Side panel (full exterior face) */}
-      <InsetRect
+      {/* Side panel face */}
+      <rect
         x={0}
         y={0}
         width={carcass.outerDepth}
         height={carcass.outerHeight}
         fill={COLORS.carcassFill}
-        stroke={COLORS.carcassStroke}
-        strokeWidth={0.5}
       />
 
-      {/* Top panel */}
-      <rect
-        x={0}
-        y={0}
-        width={carcass.outerDepth}
-        height={topT}
-        fill={COLORS.faceFill}
+      {/* Panel edge lines (top/bottom panel boundaries) */}
+      <line
+        x1={0}
+        y1={topT}
+        x2={carcass.outerDepth}
+        y2={topT}
         stroke={COLORS.carcassStroke}
-        strokeWidth={0.25}
+        strokeWidth={0.15}
       />
-
-      {/* Bottom panel */}
-      <rect
-        x={0}
-        y={carcass.outerHeight - topT}
-        width={carcass.outerDepth}
-        height={topT}
-        fill={COLORS.faceFill}
+      <line
+        x1={0}
+        y1={carcass.outerHeight - topT}
+        x2={carcass.outerDepth}
+        y2={carcass.outerHeight - topT}
         stroke={COLORS.carcassStroke}
-        strokeWidth={0.25}
+        strokeWidth={0.15}
       />
 
       {/* Overall depth */}

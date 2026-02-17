@@ -58,6 +58,10 @@ function Dividers({
     xPos += dividerThickness;
   }
 
+  // For overlay drawers, faces overlap the divider — skip rendering it
+  // so the dark interior shows through as a reveal line (matching horizontal reveals).
+  if (config.drawerStyle === "overlay") return null;
+
   return (
     <>
       {dividers.map((d) => (
@@ -724,18 +728,25 @@ function FrontViewHoverTargets({
         dims={`${fmt(sideT, unit)} \u00d7 ${fmt(innerHeight, unit)}`}
         tt={tt}
       />
-      {dividers.map((d) => (
-        <HoverRect
-          key={`d-${String(d.x)}`}
-          x={d.x}
-          y={topT}
-          width={dividerT}
-          height={innerHeight}
-          label="Divider"
-          dims={`${fmt(dividerT, unit)} \u00d7 ${fmt(innerHeight, unit)}`}
-          tt={tt}
-        />
-      ))}
+      {dividers.map((d) => {
+        const isOverlay = config.drawerStyle === "overlay";
+        return (
+          <HoverRect
+            key={`d-${String(d.x)}`}
+            x={d.x}
+            y={topT}
+            width={dividerT}
+            height={innerHeight}
+            label={isOverlay ? "Reveal" : "Divider"}
+            dims={
+              isOverlay
+                ? fmt(config.insetRevealGap, unit)
+                : `${fmt(dividerT, unit)} \u00d7 ${fmt(innerHeight, unit)}`
+            }
+            tt={tt}
+          />
+        );
+      })}
       {rails.map((r) => (
         <HoverRect
           key={`r-${String(r.x)}-${String(r.y)}`}

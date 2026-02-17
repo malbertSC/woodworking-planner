@@ -4,12 +4,12 @@ import type { JigPanelSegment } from "../../calculations/jig.ts";
 
 // ─── Constants (all in mm — STL standard) ────────────────────────────────────
 
-const CLIP_WALL_MM = 3;
+const CLIP_WALL_MM = 5;
 const CLIP_TOLERANCE_MM = 0.4;
 const CLIP_LIP_DEPTH_MM = 10;
 
 /** Height of the shiplap tongue that extends into the adjacent segment. */
-const JOINT_HEIGHT_MM = 8;
+const JOINT_HEIGHT_MM = 10;
 /** Clearance between the two halves of the shiplap joint. */
 const JOINT_CLEARANCE_MM = 0.3;
 
