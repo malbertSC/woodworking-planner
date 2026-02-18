@@ -136,9 +136,10 @@ describe("calculateDrawerBox", () => {
 
       const box = calculateDrawerBox(row, column, config);
 
-      const expectedFrontBackLength = 13 - 2 * PLY_1_2.actual;
-      expect(box.bottomWidth).toBe(expectedFrontBackLength + 2 * 0.25);
-      expect(box.bottomDepth).toBe(18 - 2 * PLY_1_2.actual + 2 * 0.25);
+      // raw: 13 - 2*0.46875 + 2*0.25 = 12.5625, rounded up to nearest 1/8
+      expect(box.bottomWidth).toBe(12.625);
+      // raw: 18 - 2*0.46875 + 2*0.25 = 17.5625, rounded up to nearest 1/8
+      expect(box.bottomDepth).toBe(17.625);
     });
 
     it("calculates correct usable interior", () => {
@@ -166,15 +167,17 @@ describe("calculateDrawerBox", () => {
       expect(box.boxOuterDepth).toBe(18);
     });
 
-    it("bottom sits between sides, full depth", () => {
+    it("bottom sits between sides and front/back", () => {
       const row = makeRow({ construction: "butt-through-sides" });
       const column = makeColumn({}, [row]);
       const config = makeConfig({}, [column]);
 
       const box = calculateDrawerBox(row, column, config);
 
-      expect(box.bottomWidth).toBe(13 - 2 * PLY_1_2.actual);
-      expect(box.bottomDepth).toBe(18);
+      // raw: 13 - 2*0.46875 = 12.0625, rounded up to nearest 1/8
+      expect(box.bottomWidth).toBe(12.125);
+      // raw: 18 - 2*0.46875 = 17.0625, rounded up to nearest 1/8
+      expect(box.bottomDepth).toBe(17.125);
     });
 
     it("usable interior height reduced by bottom panel", () => {

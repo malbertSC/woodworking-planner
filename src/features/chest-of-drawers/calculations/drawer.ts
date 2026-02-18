@@ -70,7 +70,7 @@ function calculateButtThroughSidesResult(p: BoxParams): ConstructionResult {
     sideHeight,
     boxOuterHeight: sideHeight,
     bottomWidth: p.boxOuterWidth - 2 * p.sideThickness,
-    bottomDepth: p.boxOuterDepth,
+    bottomDepth: p.boxOuterDepth - 2 * p.frontBackThickness,
     usableInteriorHeight: sideHeight - p.bottomThickness,
     usableInteriorDepth: p.boxOuterDepth - 2 * p.frontBackThickness,
   };
