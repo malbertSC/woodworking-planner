@@ -9,10 +9,13 @@ import SideView from "./SideView.tsx";
 import ThreeView from "./ThreeView.tsx";
 import JigView from "./JigView.tsx";
 import SlideLayoutView, { computeSlideLayoutSize } from "./SlideLayoutView.tsx";
+import CrossSectionView, {
+  crossSectionContentSize,
+} from "./CrossSectionView.tsx";
 import { TOOLBAR_BTN, ZOOM_BTN } from "./svg-constants.ts";
 import { useSvgTooltip, SvgTooltipOverlay } from "./SvgTooltip.tsx";
 
-type ViewTab = "front" | "side" | "3d" | "slides" | "jig";
+type ViewTab = "front" | "side" | "cross-section" | "3d" | "slides" | "jig";
 
 const PADDING = 15;
 const MIN_ZOOM = 0.5;
@@ -23,6 +26,7 @@ export default function Visualizer() {
   const config = useChestStore((s) => s.config);
   const [activeTab, setActiveTab] = useState<ViewTab>("front");
   const [zoom, setZoom] = useState(1);
+  const [selectedColumn, setSelectedColumn] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const carcass = useMemo(() => selectCarcassDimensions(config), [config]);
@@ -33,11 +37,19 @@ export default function Visualizer() {
     [config, carcass, drawerBoxes],
   );
 
+  const crossSection = useMemo(
+    () => crossSectionContentSize(carcass),
+    [carcass],
+  );
+
   let contentWidth: number;
   let contentHeight: number;
   if (activeTab === "slides") {
     contentWidth = slideLayout.width;
     contentHeight = slideLayout.height;
+  } else if (activeTab === "cross-section") {
+    contentWidth = crossSection.width;
+    contentHeight = crossSection.height;
   } else {
     contentWidth =
       activeTab === "front" ? carcass.outerWidth : carcass.outerDepth;
@@ -98,6 +110,13 @@ export default function Visualizer() {
             }}
           />
           <TabButton
+            label="Cross Section"
+            active={activeTab === "cross-section"}
+            onClick={() => {
+              setActiveTab("cross-section");
+            }}
+          />
+          <TabButton
             label="Slide Layout"
             active={activeTab === "slides"}
             onClick={() => {
@@ -121,6 +140,21 @@ export default function Visualizer() {
         </div>
         {activeTab !== "3d" && activeTab !== "jig" && (
           <div className="flex items-center gap-2">
+            {activeTab === "cross-section" && config.columns.length > 1 && (
+              <select
+                value={selectedColumn}
+                onChange={(e) => {
+                  setSelectedColumn(Number(e.target.value));
+                }}
+                className="text-xs border rounded px-1 py-1 text-stone-700"
+              >
+                {config.columns.map((_, i) => (
+                  <option key={i} value={i}>
+                    Column {i + 1}
+                  </option>
+                ))}
+              </select>
+            )}
             <button
               onClick={zoomOut}
               className={ZOOM_BTN}
@@ -190,6 +224,14 @@ export default function Visualizer() {
                 />
               ) : activeTab === "side" ? (
                 <SideView config={config} carcass={carcass} tt={tt} />
+              ) : activeTab === "cross-section" ? (
+                <CrossSectionView
+                  config={config}
+                  carcass={carcass}
+                  drawerBoxes={drawerBoxes}
+                  selectedColumn={selectedColumn}
+                  tt={tt}
+                />
               ) : (
                 <SlideLayoutView
                   config={config}

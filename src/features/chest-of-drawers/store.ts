@@ -339,6 +339,7 @@ interface ChestStore {
   exportConfig: () => string;
   importConfig: (json: string) => void;
 
+  recalculate: () => void;
   resetToDefaults: () => void;
 }
 
@@ -737,19 +738,34 @@ export const useChestStore = create<ChestStore>()(
         set({ config: parsed });
       },
 
+      recalculate: () => {
+        set((state) => ({
+          config: recomputeFromGridfinity(state.config),
+        }));
+      },
+
       resetToDefaults: () => {
         set({ config: createDefaultConfig() });
       },
     }),
     {
       name: "chest-of-drawers-store",
-      version: 2,
+      version: 3,
       migrate: (persisted, version) => {
         let data = persisted as Record<string, unknown>;
         if (version === 0) {
           data = migrateV0ToV1(data);
         }
         // v1→v2: added per-row heightMode (optional field, no data migration needed)
+        // v2→v3: recompute opening heights — rounding now targets the side height
+        // (the actual cut) instead of the opening height
+        if (version <= 2) {
+          const config = (data as { config?: ChestConfig }).config;
+          if (config) {
+            (data as { config: ChestConfig }).config =
+              recomputeFromGridfinity(config);
+          }
+        }
         return data;
       },
     },

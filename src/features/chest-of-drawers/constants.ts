@@ -4,7 +4,13 @@ export const WOOD_THICKNESSES: WoodThickness[] = [
   {
     id: "ply-1/4",
     nominal: '1/4" plywood',
-    actual: 0.25,
+    actual: 0.205,
+    material: "plywood",
+  },
+  {
+    id: "ply-3/8",
+    nominal: '3/8" plywood',
+    actual: 0.34375,
     material: "plywood",
   },
   {
@@ -92,7 +98,7 @@ export const DEFAULTS = {
   dadoGrooveOffset: 0.375,
   overlayOverlap: 0.375,
   insetRevealGap: 0.125,
-  drawerVerticalClearance: 0.25,
+  drawerVerticalClearance: 0.175,
   drawerBackClearance: 0.5,
   kerfWidth: 0.125,
   horizontalRailWidth: 3,

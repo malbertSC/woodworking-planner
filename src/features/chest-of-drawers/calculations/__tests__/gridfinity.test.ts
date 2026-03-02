@@ -5,6 +5,9 @@ import {
   gridfinityBinHeightMm,
   gridfinityMaxBinUnits,
   roundUpToNearestEighth,
+  roundToNearestEighth,
+  minUsableWidthInches,
+  minUsableHeightInches,
   openingWidthForGridUnits,
   openingHeightForBinUnits,
 } from "../gridfinity.ts";
@@ -68,7 +71,7 @@ describe("gridfinityMaxBinUnits", () => {
   });
 
   it("caps at 12u", () => {
-    expect(gridfinityMaxBinUnits(200)).toBe(12); // 12u = 88mm, plenty of room but capped
+    expect(gridfinityMaxBinUnits(200)).toBe(20); // 20u = 144mm, plenty of room but capped
   });
 
   it("returns 12 for exactly 88mm", () => {
@@ -99,27 +102,60 @@ describe("roundUpToNearestEighth", () => {
   });
 });
 
+describe("roundToNearestEighth", () => {
+  it("rounds to nearest 1/8", () => {
+    expect(roundToNearestEighth(1.0)).toBe(1.0);
+    expect(roundToNearestEighth(1.0625)).toBe(1.125); // 1/16 rounds up to 1/8
+    expect(roundToNearestEighth(1.03)).toBe(1.0); // below midpoint rounds down
+    expect(roundToNearestEighth(1.125)).toBe(1.125);
+    expect(roundToNearestEighth(1.5)).toBe(1.5);
+  });
+});
+
+describe("minUsableWidthInches", () => {
+  it("converts grid units to minimum usable width in inches", () => {
+    // 7 * 42mm = 294mm / 25.4 = 11.5748..."
+    expect(minUsableWidthInches(7)).toBeCloseTo(294 / 25.4);
+    // 1 * 42mm = 42mm / 25.4 = 1.6535..."
+    expect(minUsableWidthInches(1)).toBeCloseTo(42 / 25.4);
+  });
+});
+
+describe("minUsableHeightInches", () => {
+  it("converts bin units to minimum usable height in inches", () => {
+    // 4u = 32mm / 25.4 = 1.2598..."
+    expect(minUsableHeightInches(4)).toBeCloseTo(32 / 25.4);
+    // 6u = 46mm / 25.4 = 1.8110..."
+    expect(minUsableHeightInches(6)).toBeCloseTo(46 / 25.4);
+  });
+});
+
 describe("openingWidthForGridUnits", () => {
   const sideThickness = 0.46875; // 15/32" plywood
   const clearance = 0.5;
 
   it("computes opening width for 7 grid units", () => {
-    // 7*42mm = 294mm = 11.5748..." + 2*0.46875 + 2*0.5 = 13.5123..." → ceil to 13.625"
+    // 7*42mm = 294mm = 11.5748...", frontBack = roundUp = 11.625"
+    // boxOuter = 11.625 + 2*0.46875 = 12.5625"
+    // opening = 12.5625 + 2*0.5 = 13.5625"
     const width = openingWidthForGridUnits(7, sideThickness, clearance);
-    expect(width).toBeCloseTo(13.625);
+    expect(width).toBeCloseTo(13.5625);
   });
 
   it("computes opening width for 1 grid unit", () => {
-    // 1*42mm = 42mm = 1.6535..." + 2*0.46875 + 2*0.5 = 3.591..." → ceil to 3.625"
+    // 1*42mm = 42mm = 1.6535...", frontBack = roundUp = 1.75"
+    // boxOuter = 1.75 + 2*0.46875 = 2.6875"
+    // opening = 2.6875 + 2*0.5 = 3.6875"
     const width = openingWidthForGridUnits(1, sideThickness, clearance);
-    expect(width).toBeCloseTo(3.625);
+    expect(width).toBeCloseTo(3.6875);
   });
 
-  it("rounds final result to nearest 1/8 even with non-eighth thicknesses", () => {
-    // This is the key scenario: 15/32" plywood sides produce non-eighth sums
-    // without the final rounding step
+  it("front/back cut dimension lands on clean 1/8 even with non-eighth thicknesses", () => {
+    // The front/back length (the cut) must be a clean 1/8" fraction.
+    // Opening width itself may not be — it's derived, not a cut.
     const width = openingWidthForGridUnits(7, sideThickness, clearance);
-    expect(width * 8).toBe(Math.round(width * 8)); // exact 1/8" multiple
+    const frontBackLength = width - 2 * clearance - 2 * sideThickness;
+    expect(frontBackLength * 8).toBe(Math.round(frontBackLength * 8));
   });
 
   it("resulting interior width fits the requested grid units", () => {
@@ -191,8 +227,9 @@ describe("openingHeightForBinUnits", () => {
   });
 
   it("rounds final result to nearest 1/8 with non-eighth thicknesses", () => {
-    // 15/32" plywood bottom (0.46875") would produce 1/32" fractions without final rounding
-    // 4u = 32mm = 1.2598..." + 0.46875 + 0.25 = 1.978..." → ceil to 2.0"
+    // 15/32" plywood bottom (0.46875") would produce 1/32" fractions without rounding
+    // 4u = 32mm = 1.2598...", sideHeight = roundUp(1.2598 + 0.46875) = 1.75"
+    // openingHeight = 1.75 + 0.25 = 2.0"
     const plywoodBottom = 0.46875; // 15/32"
     const height = openingHeightForBinUnits(
       4,
@@ -202,6 +239,53 @@ describe("openingHeightForBinUnits", () => {
       dadoGrooveOffset,
     );
     expect(height).toBe(2.0);
-    expect(height * 8).toBe(Math.round(height * 8)); // exact 1/8" multiple
+  });
+
+  it("produces clean 1/8 side height for butt-through-bottom with non-eighth bottom", () => {
+    // This is the key bug fix: 6u butt-through-bottom with 1/4" plywood (0.205")
+    // used to produce sideHeight of 1-29/32" because rounding was on openingHeight
+    // instead of sideHeight.
+    // Now: sideHeight = roundUp(46/25.4) = roundUp(1.81102) = 1.875" (1-7/8")
+    //      openingHeight = 1.875 + 0.205 + 0.25 = 2.33"
+    const plywoodBottom = 0.205; // actual 1/4" plywood
+    const height = openingHeightForBinUnits(
+      6,
+      "butt-through-bottom",
+      verticalClearance,
+      plywoodBottom,
+      dadoGrooveOffset,
+    );
+    // sideHeight = openingHeight - verticalClearance - bottomThickness
+    const sideHeight = height - verticalClearance - plywoodBottom;
+    expect(sideHeight).toBe(1.875); // clean 1/8" fraction
+    expect(sideHeight * 8).toBe(Math.round(sideHeight * 8));
+  });
+
+  it("produces clean 1/8 side height for dado with non-eighth bottom", () => {
+    const plywoodBottom = 0.205;
+    const height = openingHeightForBinUnits(
+      6,
+      "dado",
+      verticalClearance,
+      plywoodBottom,
+      dadoGrooveOffset,
+    );
+    // sideHeight = openingHeight - verticalClearance
+    const sideHeight = height - verticalClearance;
+    expect(sideHeight * 8).toBe(Math.round(sideHeight * 8));
+  });
+
+  it("produces clean 1/8 side height for butt-through-sides with non-eighth bottom", () => {
+    const plywoodBottom = 0.205;
+    const height = openingHeightForBinUnits(
+      6,
+      "butt-through-sides",
+      verticalClearance,
+      plywoodBottom,
+      dadoGrooveOffset,
+    );
+    // sideHeight = openingHeight - verticalClearance
+    const sideHeight = height - verticalClearance;
+    expect(sideHeight * 8).toBe(Math.round(sideHeight * 8));
   });
 });

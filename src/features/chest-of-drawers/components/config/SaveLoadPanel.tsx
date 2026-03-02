@@ -9,6 +9,7 @@ export default function SaveLoadPanel() {
   const deleteConfig = useChestStore((s) => s.deleteConfig);
   const exportConfig = useChestStore((s) => s.exportConfig);
   const importConfig = useChestStore((s) => s.importConfig);
+  const recalculate = useChestStore((s) => s.recalculate);
   const resetToDefaults = useChestStore((s) => s.resetToDefaults);
 
   const [saveName, setSaveName] = useState(config.name);
@@ -126,7 +127,16 @@ export default function SaveLoadPanel() {
         />
       </div>
 
-      <div className="border-t border-stone-200 pt-3">
+      <div className="flex gap-2 border-t border-stone-200 pt-3">
+        <button
+          type="button"
+          onClick={() => {
+            recalculate();
+          }}
+          className="rounded border border-stone-300 px-3 py-1.5 text-sm font-medium text-stone-700 hover:bg-stone-50"
+        >
+          Recalculate
+        </button>
         <button
           type="button"
           onClick={() => {

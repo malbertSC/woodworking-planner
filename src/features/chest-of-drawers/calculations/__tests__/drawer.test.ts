@@ -289,7 +289,8 @@ describe("calculateFaceDimensions", () => {
 
       const face = calculateFaceDimensions(row, column, 0, 0, config);
 
-      expect(face.width).toBeCloseTo(14 - 0.0625);
+      // overlay single-column: openingWidth + 2 * sideThickness - reveal
+      expect(face.width).toBeCloseTo(14 + 2 * 0.71875 - 0.0625);
     });
   });
 

@@ -111,7 +111,8 @@ describe("calculateCarcassDimensions", () => {
     const result = calculateCarcassDimensions(config);
 
     expect(result.outerWidth).toBeCloseTo(14 + 0.71875 * 2);
-    expect(result.outerHeight).toBeCloseTo(18 + 0.71875 * 2);
+    // 18 (3 rows × 6) + 0.75 (bottom gap) + 0.71875 * 2 (top/bottom panels)
+    expect(result.outerHeight).toBeCloseTo(18 + 0.75 + 0.71875 * 2);
     expect(result.innerDepth).toBeCloseTo(18 + 0.5);
     expect(result.outerDepth).toBeCloseTo(18 + 0.5 + 0.25);
     expect(result.innerWidth).toBeCloseTo(14);
@@ -129,7 +130,7 @@ describe("calculateCarcassDimensions", () => {
 
     expect(result.innerWidth).toBeCloseTo(expectedInnerWidth);
     expect(result.outerWidth).toBeCloseTo(expectedOuterWidth);
-    expect(result.outerHeight).toBeCloseTo(12 + 0.71875 * 2);
+    expect(result.outerHeight).toBeCloseTo(12 + 0.75 + 0.71875 * 2);
   });
 
   it("uses tallest column to determine carcass inner height", () => {
@@ -138,7 +139,7 @@ describe("calculateCarcassDimensions", () => {
     });
     const result = calculateCarcassDimensions(config);
 
-    expect(result.outerHeight).toBeCloseTo(24 + 0.71875 * 2);
+    expect(result.outerHeight).toBeCloseTo(24 + 0.75 + 0.71875 * 2);
   });
 
   it("includes horizontal rails in height when enabled", () => {
@@ -148,7 +149,8 @@ describe("calculateCarcassDimensions", () => {
     });
     const result = calculateCarcassDimensions(config);
 
-    const expectedInnerHeight = 18 + 2 * 0.75;
+    // 18 (rows) + 2 * 0.75 (rails) + 0.75 (bottom gap)
+    const expectedInnerHeight = 18 + 2 * 0.75 + 0.75;
     expect(result.outerHeight).toBeCloseTo(expectedInnerHeight + 0.71875 * 2);
   });
 
@@ -159,7 +161,8 @@ describe("calculateCarcassDimensions", () => {
     });
     const result = calculateCarcassDimensions(config);
 
-    expect(result.outerHeight).toBeCloseTo(6 + 0.71875 * 2);
+    // 6 (row) + 0.75 (bottom gap)
+    expect(result.outerHeight).toBeCloseTo(6 + 0.75 + 0.71875 * 2);
   });
 
   it("detects constraint violations", () => {

@@ -8,7 +8,7 @@ import type {
   DrawerWarning,
   WoodThickness,
 } from "../types.ts";
-import { roundUpToNearestEighth } from "./gridfinity.ts";
+import { roundUpToNearestEighth, roundToNearestEighth } from "./gridfinity.ts";
 
 function getDrawerWood(
   row: DrawerRow,
@@ -194,8 +194,8 @@ export function calculateDrawerBox(
     frontBackHeight: result.sideHeight,
     bottomWidth: roundUpToNearestEighth(result.bottomWidth),
     bottomDepth: roundUpToNearestEighth(result.bottomDepth),
-    faceWidth: roundUpToNearestEighth(face.width),
-    faceHeight: roundUpToNearestEighth(face.height),
+    faceWidth: roundToNearestEighth(face.width),
+    faceHeight: roundToNearestEighth(face.height),
     warnings: [],
   };
 

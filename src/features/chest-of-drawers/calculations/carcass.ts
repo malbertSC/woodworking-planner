@@ -17,13 +17,17 @@ export function getColumnInnerHeight(
     0,
   );
 
+  // Each openingHeight already includes one verticalClearance (above the box).
+  // Add one more for the gap below the bottom drawer so it can slide freely.
+  const bottomGap = config.drawerVerticalClearance;
+
   if (!config.horizontalRails.enabled || column.rows.length <= 1) {
-    return totalRowHeight;
+    return totalRowHeight + bottomGap;
   }
 
   const railCount = column.rows.length - 1;
   const railThickness = config.horizontalRails.thickness.actual;
-  return totalRowHeight + railCount * railThickness;
+  return totalRowHeight + railCount * railThickness + bottomGap;
 }
 
 export function calculateCarcassDimensions(

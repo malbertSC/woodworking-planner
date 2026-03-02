@@ -7,7 +7,7 @@ const GRID_UNIT_MM = 42;
 // Derived from: 4u = 32mm, 6u = 46mm
 const BIN_HEIGHT_UNIT_MM = 7;
 const BIN_HEIGHT_BASE_MM = 4;
-const MAX_BIN_UNITS = 12;
+const MAX_BIN_UNITS = 20;
 
 const MM_PER_INCH = 25.4;
 
@@ -37,14 +37,37 @@ export function gridfinityMaxBinUnits(interiorHeightMm: number): number {
 
 // --- Reverse calculations: gridfinity units → opening dimensions ---
 
-/** Round up to nearest 1/8" to keep cut dimensions on clean fractions. */
+/** Round up to nearest 1/8" — use for cut dimensions with hard minimums (e.g. drawer sides). */
 export function roundUpToNearestEighth(inches: number): number {
   return Math.ceil(inches * 8) / 8;
 }
 
+/** Round to nearest 1/8" — use for cut dimensions without hard minimums (e.g. faces). */
+export function roundToNearestEighth(inches: number): number {
+  return Math.round(inches * 8) / 8;
+}
+
+/** Convert grid width units to minimum required usable interior width in inches. */
+export function minUsableWidthInches(gridUnits: number): number {
+  return (gridUnits * GRID_UNIT_MM) / MM_PER_INCH;
+}
+
+/** Convert bin height units to minimum required usable interior height in inches. */
+export function minUsableHeightInches(binUnits: number): number {
+  return gridfinityBinHeightMm(binUnits) / MM_PER_INCH;
+}
+
 /**
  * Calculate the opening width needed to fit `gridUnits` gridfinity grid units.
- * Works backwards: gridUnits → min interior mm → add clearances → round up to 1/8".
+ *
+ * Strategy: the front/back piece length is the cut dimension — round THAT to
+ * the nearest 1/8", then derive the box and opening widths by adding back
+ * non-cut offsets (side thickness, slide clearance).
+ *
+ * For all construction methods, the front/back fits between the sides:
+ *   frontBackLength >= minUsableWidth
+ *   boxOuterWidth = frontBackLength + 2 * sideThickness
+ *   openingWidth = boxOuterWidth + 2 * clearancePerSide
  *
  * @param gridUnits - Number of 42mm gridfinity grid units to fit
  * @param drawerSideThickness - Drawer side wood thickness (inches)
@@ -56,21 +79,23 @@ export function openingWidthForGridUnits(
   drawerSideThickness: number,
   clearancePerSide: number,
 ): number {
-  const minInteriorMm = gridUnits * GRID_UNIT_MM;
-  const minInteriorInches = minInteriorMm / MM_PER_INCH;
-  // usableInteriorWidth = boxOuterWidth - 2 * sideThickness
-  // boxOuterWidth = openingWidth - 2 * clearancePerSide
-  // → openingWidth = interiorWidth + 2 * sideThickness + 2 * clearancePerSide
-  // Round the final result so cut dimensions land on clean 1/8" fractions,
-  // even when wood thicknesses aren't 1/8"-aligned (e.g. 15/32" plywood).
-  return roundUpToNearestEighth(
-    minInteriorInches + 2 * drawerSideThickness + 2 * clearancePerSide,
-  );
+  const minUsable = minUsableWidthInches(gridUnits);
+  const frontBackLength = roundUpToNearestEighth(minUsable);
+  const boxOuterWidth = frontBackLength + 2 * drawerSideThickness;
+  return boxOuterWidth + 2 * clearancePerSide;
 }
 
 /**
  * Calculate the opening height needed to fit `binUnits` gridfinity bins.
- * Works backwards: binUnits → bin height mm → add construction offsets → round up to 1/8".
+ *
+ * Strategy: compute the minimum required side height (the actual cut dimension)
+ * and round THAT to the nearest 1/8". Then derive the opening height by adding
+ * back non-cut offsets (vertical clearance, applied bottom thickness).
+ *
+ * This ensures the side height — which you actually cut on the table saw — always
+ * lands on a clean 1/8" fraction, even when wood thicknesses aren't 1/8"-aligned
+ * (e.g. 1/4" plywood at 0.205"). The opening height may not be a clean fraction,
+ * but that's derived from the drawer dimensions, not cut directly.
  *
  * @param binUnits - Gridfinity bin height units (e.g. 4u = 32mm)
  * @param construction - Drawer box construction method
@@ -86,27 +111,30 @@ export function openingHeightForBinUnits(
   bottomThickness: number,
   dadoGrooveOffset: number,
 ): number {
-  const minInteriorMm = gridfinityBinHeightMm(binUnits);
-  const minInteriorInches = minInteriorMm / MM_PER_INCH;
+  const minUsable = minUsableHeightInches(binUnits);
 
-  // Reverse of the construction-specific usableInteriorHeight formulas:
-  // dado: usableInteriorHeight = (openingHeight - verticalClearance) - dadoGrooveOffset - bottomThickness
-  // butt-through-sides: usableInteriorHeight = (openingHeight - verticalClearance) - bottomThickness
-  // butt-through-bottom: usableInteriorHeight = openingHeight - verticalClearance - bottomThickness
-  // Round the final result so cut dimensions land on clean 1/8" fractions,
-  // even when wood thicknesses aren't 1/8"-aligned (e.g. 15/32" plywood).
+  // Round the side height (the cut) to nearest 1/8", then add back non-cut offsets.
+  // Side height formulas per construction:
+  //   dado:               sideHeight >= minUsable + dadoGrooveOffset + bottomThickness
+  //   butt-through-sides: sideHeight >= minUsable + bottomThickness
+  //   butt-through-bottom: sideHeight >= minUsable (side IS the usable height)
+  // Opening height formulas per construction:
+  //   dado / butt-through-sides: openingHeight = sideHeight + verticalClearance
+  //   butt-through-bottom:       openingHeight = sideHeight + bottomThickness + verticalClearance
   switch (construction) {
-    case "dado":
-      return roundUpToNearestEighth(
-        minInteriorInches +
-          dadoGrooveOffset +
-          bottomThickness +
-          verticalClearance,
+    case "dado": {
+      const sideHeight = roundUpToNearestEighth(
+        minUsable + dadoGrooveOffset + bottomThickness,
       );
-    case "butt-through-sides":
-    case "butt-through-bottom":
-      return roundUpToNearestEighth(
-        minInteriorInches + bottomThickness + verticalClearance,
-      );
+      return sideHeight + verticalClearance;
+    }
+    case "butt-through-sides": {
+      const sideHeight = roundUpToNearestEighth(minUsable + bottomThickness);
+      return sideHeight + verticalClearance;
+    }
+    case "butt-through-bottom": {
+      const sideHeight = roundUpToNearestEighth(minUsable);
+      return sideHeight + bottomThickness + verticalClearance;
+    }
   }
 }
