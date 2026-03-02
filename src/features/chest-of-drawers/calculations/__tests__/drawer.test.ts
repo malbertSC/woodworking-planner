@@ -136,10 +136,12 @@ describe("calculateDrawerBox", () => {
 
       const box = calculateDrawerBox(row, column, config);
 
-      // raw: 13 - 2*0.46875 + 2*0.25 = 12.5625, rounded up to nearest 1/8
-      expect(box.bottomWidth).toBe(12.625);
-      // raw: 18 - 2*0.46875 + 2*0.25 = 17.5625, rounded up to nearest 1/8
-      expect(box.bottomDepth).toBe(17.625);
+      // Bottom dimensions are derived from box geometry — not independently rounded.
+      // Rounding up would make the bottom too large to fit in the dado grooves.
+      // raw: 13 - 2*0.46875 + 2*0.25 = 12.5625
+      expect(box.bottomWidth).toBe(12.5625);
+      // raw: 18 - 2*0.46875 + 2*0.25 = 17.5625
+      expect(box.bottomDepth).toBe(17.5625);
     });
 
     it("calculates correct usable interior", () => {
@@ -174,10 +176,12 @@ describe("calculateDrawerBox", () => {
 
       const box = calculateDrawerBox(row, column, config);
 
-      // raw: 13 - 2*0.46875 = 12.0625, rounded up to nearest 1/8
-      expect(box.bottomWidth).toBe(12.125);
-      // raw: 18 - 2*0.46875 = 17.0625, rounded up to nearest 1/8
-      expect(box.bottomDepth).toBe(17.125);
+      // Bottom dimensions are derived from box geometry — not independently rounded.
+      // Rounding up would make the bottom too large to fit between sides/front/back.
+      // raw: 13 - 2*0.46875 = 12.0625
+      expect(box.bottomWidth).toBe(12.0625);
+      // raw: 18 - 2*0.46875 = 17.0625
+      expect(box.bottomDepth).toBe(17.0625);
     });
 
     it("usable interior height reduced by bottom panel", () => {
