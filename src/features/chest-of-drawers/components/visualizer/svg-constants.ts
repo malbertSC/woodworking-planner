@@ -16,6 +16,11 @@ export const COLORS = {
   slideStroke: "#64748B",
   boxFill: "#E8D5B7",
   boxStroke: "#8B6914",
+  clearanceFill: "#DBEAFE",
+  railFill: "#D4A574",
+  sumOk: "#16A34A",
+  sumBad: "#DC2626",
+  backPanelFill: "#B8977A",
 };
 
 export const DIM_OFFSET = 4;

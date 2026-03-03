@@ -1,21 +1,25 @@
-import { useCallback, useMemo, useRef, useState, type WheelEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type WheelEvent,
+} from "react";
 import { useChestStore } from "../../store.ts";
 import {
   selectCarcassDimensions,
   selectAllDrawerBoxes,
 } from "../../selectors.ts";
-import FrontView from "./FrontView.tsx";
-import SideView from "./SideView.tsx";
+import FrontAuditView, { frontAuditContentSize } from "./FrontAuditView.tsx";
+import DepthAuditView, { depthAuditContentSize } from "./DepthAuditView.tsx";
+import WidthAuditView, { widthAuditContentSize } from "./WidthAuditView.tsx";
 import ThreeView from "./ThreeView.tsx";
 import JigView from "./JigView.tsx";
-import SlideLayoutView, { computeSlideLayoutSize } from "./SlideLayoutView.tsx";
-import CrossSectionView, {
-  crossSectionContentSize,
-} from "./CrossSectionView.tsx";
 import { TOOLBAR_BTN, ZOOM_BTN } from "./svg-constants.ts";
 import { useSvgTooltip, SvgTooltipOverlay } from "./SvgTooltip.tsx";
 
-type ViewTab = "front" | "side" | "cross-section" | "3d" | "slides" | "jig";
+type ViewTab = "front" | "depth" | "width" | "3d" | "jig";
 
 const PADDING = 15;
 const MIN_ZOOM = 0.5;
@@ -32,27 +36,24 @@ export default function Visualizer() {
   const carcass = useMemo(() => selectCarcassDimensions(config), [config]);
   const drawerBoxes = useMemo(() => selectAllDrawerBoxes(config), [config]);
   const { tooltip, tt } = useSvgTooltip(containerRef);
-  const slideLayout = useMemo(
-    () => computeSlideLayoutSize(config, carcass, drawerBoxes),
-    [config, carcass, drawerBoxes],
-  );
 
-  const crossSection = useMemo(
-    () => crossSectionContentSize(carcass),
-    [carcass],
-  );
+  const frontSize = useMemo(() => frontAuditContentSize(carcass), [carcass]);
+  const depthSize = useMemo(() => depthAuditContentSize(carcass), [carcass]);
+  const widthSize = useMemo(() => widthAuditContentSize(carcass), [carcass]);
 
   let contentWidth: number;
   let contentHeight: number;
-  if (activeTab === "slides") {
-    contentWidth = slideLayout.width;
-    contentHeight = slideLayout.height;
-  } else if (activeTab === "cross-section") {
-    contentWidth = crossSection.width;
-    contentHeight = crossSection.height;
+  if (activeTab === "front") {
+    contentWidth = frontSize.width;
+    contentHeight = frontSize.height;
+  } else if (activeTab === "depth") {
+    contentWidth = depthSize.width;
+    contentHeight = depthSize.height;
+  } else if (activeTab === "width") {
+    contentWidth = widthSize.width;
+    contentHeight = widthSize.height;
   } else {
-    contentWidth =
-      activeTab === "front" ? carcass.outerWidth : carcass.outerDepth;
+    contentWidth = carcass.outerWidth;
     contentHeight = carcass.outerHeight;
   }
 
@@ -91,36 +92,49 @@ export default function Visualizer() {
   const offsetX = (viewBoxWidth - scaledW) / 2;
   const offsetY = (viewBoxHeight - scaledH) / 2;
 
+  // Scale factor: pixels per SVG unit (approximate, for DimensionChain label threshold)
+  const [containerWidth, setContainerWidth] = useState(0);
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => {
+      if (entry) setContainerWidth(entry.contentRect.width);
+    });
+    ro.observe(el);
+    setContainerWidth(el.clientWidth);
+    return () => {
+      ro.disconnect();
+    };
+  }, []);
+  const svgScale = containerWidth > 0 ? containerWidth / scaledW : 8;
+
+  // Show column selector for all audit views when multi-column
+  const showColumnSelector =
+    activeTab !== "3d" && activeTab !== "jig" && config.columns.length > 1;
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between border-b border-stone-200 px-3 py-2">
         <div className="flex gap-1">
           <TabButton
-            label="Front View"
+            label="Front Audit"
             active={activeTab === "front"}
             onClick={() => {
               setActiveTab("front");
             }}
           />
           <TabButton
-            label="Side View"
-            active={activeTab === "side"}
+            label="Depth Audit"
+            active={activeTab === "depth"}
             onClick={() => {
-              setActiveTab("side");
+              setActiveTab("depth");
             }}
           />
           <TabButton
-            label="Cross Section"
-            active={activeTab === "cross-section"}
+            label="Width Audit"
+            active={activeTab === "width"}
             onClick={() => {
-              setActiveTab("cross-section");
-            }}
-          />
-          <TabButton
-            label="Slide Layout"
-            active={activeTab === "slides"}
-            onClick={() => {
-              setActiveTab("slides");
+              setActiveTab("width");
             }}
           />
           <TabButton
@@ -140,7 +154,7 @@ export default function Visualizer() {
         </div>
         {activeTab !== "3d" && activeTab !== "jig" && (
           <div className="flex items-center gap-2">
-            {activeTab === "cross-section" && config.columns.length > 1 && (
+            {showColumnSelector && (
               <select
                 value={selectedColumn}
                 onChange={(e) => {
@@ -205,7 +219,7 @@ export default function Visualizer() {
         ) : (
           <svg
             role="img"
-            aria-label={`Chest of drawers ${activeTab} view`}
+            aria-label={`Chest of drawers ${activeTab} audit view`}
             width="100%"
             height="100%"
             viewBox={`${String(offsetX)} ${String(offsetY)} ${String(scaledW)} ${String(scaledH)}`}
@@ -213,31 +227,33 @@ export default function Visualizer() {
             onWheel={handleWheel}
             className="min-h-[300px]"
           >
-            <title>{`Chest of drawers — ${activeTab} view`}</title>
             <g transform={`translate(${String(PADDING)}, ${String(PADDING)})`}>
               {activeTab === "front" ? (
-                <FrontView
-                  config={config}
-                  carcass={carcass}
-                  drawerBoxes={drawerBoxes}
-                  tt={tt}
-                />
-              ) : activeTab === "side" ? (
-                <SideView config={config} carcass={carcass} tt={tt} />
-              ) : activeTab === "cross-section" ? (
-                <CrossSectionView
+                <FrontAuditView
                   config={config}
                   carcass={carcass}
                   drawerBoxes={drawerBoxes}
                   selectedColumn={selectedColumn}
                   tt={tt}
+                  scale={svgScale}
                 />
-              ) : (
-                <SlideLayoutView
+              ) : activeTab === "depth" ? (
+                <DepthAuditView
                   config={config}
                   carcass={carcass}
                   drawerBoxes={drawerBoxes}
+                  selectedColumn={selectedColumn}
                   tt={tt}
+                  scale={svgScale}
+                />
+              ) : (
+                <WidthAuditView
+                  config={config}
+                  carcass={carcass}
+                  drawerBoxes={drawerBoxes}
+                  selectedColumn={selectedColumn}
+                  tt={tt}
+                  scale={svgScale}
                 />
               )}
             </g>
