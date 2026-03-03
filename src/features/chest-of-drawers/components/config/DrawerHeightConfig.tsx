@@ -46,7 +46,7 @@ export default function DrawerHeightConfig() {
           value={bulkBinUnits}
           onChange={setBulkBinUnits}
           min={1}
-          max={12}
+          max={20}
           step={1}
           suffix="u bins"
         />
@@ -119,7 +119,7 @@ export default function DrawerHeightConfig() {
                         setRowBinHeight(col.id, row.id, v);
                       }}
                       min={1}
-                      max={12}
+                      max={20}
                       step={1}
                       suffix="u"
                     />

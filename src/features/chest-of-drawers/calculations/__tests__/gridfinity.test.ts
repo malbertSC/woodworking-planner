@@ -70,7 +70,7 @@ describe("gridfinityMaxBinUnits", () => {
     expect(gridfinityMaxBinUnits(50)).toBe(6); // 6u = 46mm fits, 7u = 53mm doesn't
   });
 
-  it("caps at 12u", () => {
+  it("caps at 20u", () => {
     expect(gridfinityMaxBinUnits(200)).toBe(20); // 20u = 144mm, plenty of room but capped
   });
 

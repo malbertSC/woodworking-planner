@@ -56,18 +56,38 @@ function computeOpeningHeight(
   );
 }
 
-/** Recompute all opening dimensions from stored gridfinity units. */
+/** Recompute all opening dimensions from stored gridfinity units,
+ *  and re-apply current DEFAULTS so constant changes take effect. */
 function recomputeFromGridfinity(config: ChestConfig): ChestConfig {
-  return {
+  const updated: ChestConfig = {
     ...config,
+    slideSpec: {
+      ...config.slideSpec,
+      clearancePerSide: DEFAULTS.slideClearancePerSide,
+      minMountingHeight: DEFAULTS.slideMinMountingHeight,
+    },
+    kerfWidth: DEFAULTS.kerfWidth,
+    dadoGrooveDepth: DEFAULTS.dadoGrooveDepth,
+    dadoGrooveOffset: DEFAULTS.dadoGrooveOffset,
+    overlayOverlap: DEFAULTS.overlayOverlap,
+    insetRevealGap: DEFAULTS.insetRevealGap,
+    drawerVerticalClearance: DEFAULTS.drawerVerticalClearance,
+    drawerBackClearance: DEFAULTS.drawerBackClearance,
+    horizontalRails: {
+      ...config.horizontalRails,
+      width: DEFAULTS.horizontalRailWidth,
+    },
+  };
+  return {
+    ...updated,
     defaultRowHeight: computeOpeningHeight(
-      config.defaultBinHeightUnits,
-      config.defaultConstruction,
-      config,
+      updated.defaultBinHeightUnits,
+      updated.defaultConstruction,
+      updated,
     ),
-    columns: config.columns.map((col) => ({
+    columns: updated.columns.map((col) => ({
       ...col,
-      openingWidth: computeOpeningWidth(col.gridWidthUnits, config),
+      openingWidth: computeOpeningWidth(col.gridWidthUnits, updated),
       rows: col.rows.map((row) =>
         row.heightMode === "direct"
           ? row
@@ -76,7 +96,7 @@ function recomputeFromGridfinity(config: ChestConfig): ChestConfig {
               openingHeight: computeOpeningHeight(
                 row.binHeightUnits,
                 row.construction,
-                config,
+                updated,
               ),
             },
       ),
