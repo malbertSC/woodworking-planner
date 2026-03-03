@@ -106,8 +106,7 @@ export default function JigView() {
     for (const p of panels) {
       const panelBase = `jig-${p.panelLabel.toLowerCase().replace(/\s+/g, "-")}`;
       const thickMm = p.panelThickness * INCHES_TO_MM;
-      const edges: ("front" | "back")[] =
-        p.sideBZones.length > 0 ? ["front", "back"] : ["front"];
+      const edges: ("front" | "back")[] = ["front", "back"];
       for (const e of edges) {
         for (const seg of p.segments) {
           const effective = e === "back" ? flipSegment(seg) : seg;
