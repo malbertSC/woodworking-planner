@@ -8,7 +8,6 @@ import type {
   DrawerWarning,
   WoodThickness,
 } from "../types.ts";
-import { roundToNearestEighth } from "./gridfinity.ts";
 
 function getDrawerWood(
   row: DrawerRow,
@@ -194,8 +193,8 @@ export function calculateDrawerBox(
     frontBackHeight: result.sideHeight,
     bottomWidth: result.bottomWidth,
     bottomDepth: result.bottomDepth,
-    faceWidth: roundToNearestEighth(face.width),
-    faceHeight: roundToNearestEighth(face.height),
+    faceWidth: face.width,
+    faceHeight: face.height,
     warnings: [],
   };
 
@@ -210,16 +209,18 @@ export function calculateFaceDimensions(
   columnIndex: number,
   config: ChestConfig,
 ): { width: number; height: number } {
+  const reveal = config.insetRevealGap;
+
   if (config.drawerStyle === "inset") {
     return {
-      width: column.openingWidth - 2 * config.insetRevealGap,
-      height: row.openingHeight - 2 * config.insetRevealGap,
+      width: column.openingWidth - 2 * reveal,
+      height: row.openingHeight - 2 * reveal,
     };
   }
 
   return {
-    width: calculateOverlayFaceWidth(column, columnIndex, config),
-    height: calculateOverlayFaceHeight(row, rowIndex, column, config),
+    width: calculateOverlayFaceWidth(column, columnIndex, config) - reveal,
+    height: calculateOverlayFaceHeight(row, rowIndex, column, config) - reveal,
   };
 }
 
@@ -229,14 +230,13 @@ function calculateOverlayFaceWidth(
   config: ChestConfig,
 ): number {
   const dividerThickness = config.woodAssignments.carcassDividers.actual;
-  const reveal = config.insetRevealGap;
 
   if (config.columns.length === 1) {
     const sideThickness = config.woodAssignments.carcassSides.actual;
-    return column.openingWidth + 2 * sideThickness - reveal;
+    return column.openingWidth + 2 * sideThickness;
   }
 
-  return column.openingWidth + dividerThickness - reveal;
+  return column.openingWidth + dividerThickness;
 }
 
 function calculateOverlayFaceHeight(
@@ -245,16 +245,15 @@ function calculateOverlayFaceHeight(
   column: Column,
   config: ChestConfig,
 ): number {
-  const reveal = config.insetRevealGap;
   const railHeight = config.horizontalRails.enabled
     ? config.horizontalRails.thickness.actual
     : 0;
 
   if (column.rows.length === 1) {
-    return row.openingHeight - reveal;
+    return row.openingHeight;
   }
 
-  return row.openingHeight + railHeight - reveal;
+  return row.openingHeight + railHeight;
 }
 
 export function getDrawerPieces(

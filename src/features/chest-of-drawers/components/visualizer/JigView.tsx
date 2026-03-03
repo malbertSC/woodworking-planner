@@ -103,13 +103,21 @@ export default function JigView() {
   }
 
   function handleDownloadAll() {
-    for (const seg of currentPanel.segments) {
-      const geom = buildSegGeometry(seg);
-      exportGeometryAsStl(
-        geom,
-        `${fileBase}-seg${String(seg.segmentIndex + 1)}.stl`,
-      );
-      geom.dispose();
+    for (const p of panels) {
+      const panelBase = `jig-${p.panelLabel.toLowerCase().replace(/\s+/g, "-")}`;
+      const thickMm = p.panelThickness * INCHES_TO_MM;
+      const edges: ("front" | "back")[] =
+        p.sideBZones.length > 0 ? ["front", "back"] : ["front"];
+      for (const e of edges) {
+        for (const seg of p.segments) {
+          const effective = e === "back" ? flipSegment(seg) : seg;
+          const geom = buildJigSegmentGeometry(effective, thickMm);
+          const segSuffix =
+            p.segments.length > 1 ? `-seg${String(seg.segmentIndex + 1)}` : "";
+          exportGeometryAsStl(geom, `${panelBase}-${e}${segSuffix}.stl`);
+          geom.dispose();
+        }
+      }
     }
   }
 
@@ -188,14 +196,12 @@ export default function JigView() {
           >
             {panel.segments.length > 1 ? "Download Segment" : "Download STL"}
           </button>
-          {panel.segments.length > 1 && (
-            <button
-              onClick={handleDownloadAll}
-              className="rounded border border-amber-600 px-2.5 py-0.5 text-sm text-amber-700 hover:bg-amber-50"
-            >
-              Download All
-            </button>
-          )}
+          <button
+            onClick={handleDownloadAll}
+            className="rounded border border-amber-600 px-2.5 py-0.5 text-sm text-amber-700 hover:bg-amber-50"
+          >
+            Download All
+          </button>
         </div>
       </div>
 

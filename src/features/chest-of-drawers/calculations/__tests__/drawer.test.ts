@@ -286,7 +286,7 @@ describe("calculateFaceDimensions", () => {
   });
 
   describe("overlay style - single column", () => {
-    it("face covers opening minus reveal", () => {
+    it("face covers opening plus side overlap minus reveal", () => {
       const row = makeRow();
       const column = makeColumn({}, [row]);
       const config = makeConfig({ drawerStyle: "overlay" }, [column]);

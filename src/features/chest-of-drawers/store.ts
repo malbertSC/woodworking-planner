@@ -56,10 +56,11 @@ function computeOpeningHeight(
   );
 }
 
-/** Recompute all opening dimensions from stored gridfinity units,
- *  and re-apply current DEFAULTS so constant changes take effect. */
-function recomputeFromGridfinity(config: ChestConfig): ChestConfig {
-  const updated: ChestConfig = {
+/** Reset non-configurable constants to their DEFAULTS values.
+ *  Called on recalculate and import so that code-level constant
+ *  changes take effect without a full config reset. */
+function applyDefaults(config: ChestConfig): ChestConfig {
+  return {
     ...config,
     slideSpec: {
       ...config.slideSpec,
@@ -78,16 +79,20 @@ function recomputeFromGridfinity(config: ChestConfig): ChestConfig {
       width: DEFAULTS.horizontalRailWidth,
     },
   };
+}
+
+/** Recompute all opening dimensions from stored gridfinity units. */
+function recomputeFromGridfinity(config: ChestConfig): ChestConfig {
   return {
-    ...updated,
+    ...config,
     defaultRowHeight: computeOpeningHeight(
-      updated.defaultBinHeightUnits,
-      updated.defaultConstruction,
-      updated,
+      config.defaultBinHeightUnits,
+      config.defaultConstruction,
+      config,
     ),
-    columns: updated.columns.map((col) => ({
+    columns: config.columns.map((col) => ({
       ...col,
-      openingWidth: computeOpeningWidth(col.gridWidthUnits, updated),
+      openingWidth: computeOpeningWidth(col.gridWidthUnits, config),
       rows: col.rows.map((row) =>
         row.heightMode === "direct"
           ? row
@@ -96,7 +101,7 @@ function recomputeFromGridfinity(config: ChestConfig): ChestConfig {
               openingHeight: computeOpeningHeight(
                 row.binHeightUnits,
                 row.construction,
-                updated,
+                config,
               ),
             },
       ),
@@ -760,7 +765,7 @@ export const useChestStore = create<ChestStore>()(
 
       recalculate: () => {
         set((state) => ({
-          config: recomputeFromGridfinity(state.config),
+          config: recomputeFromGridfinity(applyDefaults(state.config)),
         }));
       },
 
@@ -782,8 +787,9 @@ export const useChestStore = create<ChestStore>()(
         if (version <= 2) {
           const config = (data as { config?: ChestConfig }).config;
           if (config) {
-            (data as { config: ChestConfig }).config =
-              recomputeFromGridfinity(config);
+            (data as { config: ChestConfig }).config = recomputeFromGridfinity(
+              applyDefaults(config),
+            );
           }
         }
         return data;

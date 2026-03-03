@@ -98,7 +98,7 @@ export const DEFAULTS = {
   dadoGrooveOffset: 0.375,
   overlayOverlap: 0.375,
   insetRevealGap: 0.125,
-  drawerVerticalClearance: 0.25,
+  drawerVerticalClearance: 0.1875,
   drawerBackClearance: 0.5,
   kerfWidth: 0.125,
   horizontalRailWidth: 3,
