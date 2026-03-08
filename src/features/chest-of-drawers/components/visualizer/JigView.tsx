@@ -8,7 +8,11 @@ import {
   type JigPanelSegment,
 } from "../../calculations/jig.ts";
 import { buildJigSegmentGeometry } from "./jig-geometry.ts";
-import { exportGeometryAsStl } from "./stl-export.ts";
+import {
+  exportGeometryAsStl,
+  geometryToStlBuffer,
+  exportStlsAsZip,
+} from "./stl-export.ts";
 import CameraPresetToolbar from "./CameraPresets.tsx";
 
 const INCHES_TO_MM = 25.4;
@@ -103,21 +107,25 @@ export default function JigView() {
   }
 
   function handleDownloadAll() {
+    const files: { name: string; buffer: ArrayBuffer }[] = [];
     for (const p of panels) {
       const panelBase = `jig-${p.panelLabel.toLowerCase().replace(/\s+/g, "-")}`;
       const thickMm = p.panelThickness * INCHES_TO_MM;
-      const edges: ("front" | "back")[] = ["front", "back"];
-      for (const e of edges) {
+      for (const e of ["front", "back"] as const) {
         for (const seg of p.segments) {
           const effective = e === "back" ? flipSegment(seg) : seg;
           const geom = buildJigSegmentGeometry(effective, thickMm);
           const segSuffix =
             p.segments.length > 1 ? `-seg${String(seg.segmentIndex + 1)}` : "";
-          exportGeometryAsStl(geom, `${panelBase}-${e}${segSuffix}.stl`);
+          files.push({
+            name: `${panelBase}-${e}${segSuffix}.stl`,
+            buffer: geometryToStlBuffer(geom),
+          });
           geom.dispose();
         }
       }
     }
+    void exportStlsAsZip(files, "slide-jigs.zip");
   }
 
   return (
