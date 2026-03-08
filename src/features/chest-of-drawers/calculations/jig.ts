@@ -60,7 +60,8 @@ export function computeSlidePositions(
     : 0;
 
   const positions: SlidePosition[] = [];
-  let cumulative = 0;
+  // Start above the bottom gap so the lowest drawer can slide freely.
+  let cumulative = config.drawerVerticalClearance;
 
   for (const [i, row] of reversed.entries()) {
     const originalIndex = rows.length - 1 - i;
