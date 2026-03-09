@@ -333,16 +333,16 @@ export function computeAllJigPanelLayouts(
   const firstCol = columns[0];
   if (!firstCol) return panels;
 
-  // Left side panel — slides on sideA (inside face)
-  const leftSideA = computeJigZones(firstCol, config, carcassInnerHeight);
+  // Left side panel — slides on sideB (inside face faces Z+)
+  const leftZones = computeJigZones(firstCol, config, carcassInnerHeight);
   panels.push({
     panelLabel: N > 1 ? "Left Side" : "Side Panel",
     panelIndex: 0,
     panelThickness: woodAssignments.carcassSides.actual,
     panelHeight: carcassInnerHeight,
-    sideAZones: leftSideA,
-    sideBZones: [],
-    segments: computeJigPanelSegments(carcassInnerHeight, leftSideA, []),
+    sideAZones: [],
+    sideBZones: leftZones,
+    segments: computeJigPanelSegments(carcassInnerHeight, [], leftZones),
   });
 
   // Dividers — slides on both faces

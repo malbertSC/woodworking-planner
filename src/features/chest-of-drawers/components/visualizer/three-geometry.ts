@@ -215,9 +215,9 @@ function computeSlidesCabinetMember(
     let svgY = topBottomT;
     for (const row of col.rows) {
       const slideHeight = Math.min(SLIDE_PROFILE_HEIGHT, row.openingHeight);
-      const [cx, cy] = svgToThree(
+      const [cx, slideCy] = svgToThree(
         svgX + col.openingWidth / 2,
-        svgY + row.openingHeight / 2,
+        svgY + row.openingHeight - slideHeight / 2,
         carcass.outerWidth,
         carcass.outerHeight,
         carcass.outerDepth,
@@ -229,14 +229,14 @@ function computeSlidesCabinetMember(
       panels.push(
         {
           key: `slide-cab-${col.id}-${row.id}-L`,
-          position: [leftX, cy, boxCenterZ],
+          position: [leftX, slideCy, boxCenterZ],
           size: [memberWidth, slideHeight, slideLength],
           material: COLORS.slideFill,
           type: "slide",
         },
         {
           key: `slide-cab-${col.id}-${row.id}-R`,
-          position: [rightX, cy, boxCenterZ],
+          position: [rightX, slideCy, boxCenterZ],
           size: [memberWidth, slideHeight, slideLength],
           material: COLORS.slideFill,
           type: "slide",
@@ -347,18 +347,20 @@ function computeSlidesDrawerMember(
   const memberWidth = clearancePerSide / 2;
   const slideHeight = Math.min(SLIDE_PROFILE_HEIGHT, openingHeight);
   const hw = box.boxOuterWidth / 2;
+  // Bottom-flush: slide bottom aligns with opening bottom
+  const slideCy = cy - openingHeight / 2 + slideHeight / 2;
 
   return [
     {
       key: `${prefix}-slide-L`,
-      position: [cx - hw - memberWidth / 2, cy, boxCenterZ],
+      position: [cx - hw - memberWidth / 2, slideCy, boxCenterZ],
       size: [memberWidth, slideHeight, slideLength],
       material: COLORS.slideFill,
       type: "slide",
     },
     {
       key: `${prefix}-slide-R`,
-      position: [cx + hw + memberWidth / 2, cy, boxCenterZ],
+      position: [cx + hw + memberWidth / 2, slideCy, boxCenterZ],
       size: [memberWidth, slideHeight, slideLength],
       material: COLORS.slideFill,
       type: "slide",

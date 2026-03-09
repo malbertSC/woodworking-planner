@@ -30,17 +30,24 @@ function JigMesh({
   layout,
   segmentIndex,
   edge,
+  backClearanceMm,
 }: {
   layout: JigPanelLayout;
   segmentIndex: number;
   edge: "front" | "back";
+  backClearanceMm: number;
 }) {
   const rawSegment = layout.segments[segmentIndex];
   const geometry = useMemo(() => {
     if (!rawSegment) return null;
     const seg = edge === "back" ? flipSegment(rawSegment) : rawSegment;
-    return buildJigSegmentGeometry(seg, layout.panelThickness * INCHES_TO_MM);
-  }, [rawSegment, layout.panelThickness, edge]);
+    return buildJigSegmentGeometry(
+      seg,
+      layout.panelThickness * INCHES_TO_MM,
+      edge,
+      backClearanceMm,
+    );
+  }, [rawSegment, layout.panelThickness, edge, backClearanceMm]);
 
   if (!geometry) return null;
 
@@ -93,10 +100,16 @@ export default function JigView() {
   // Capture narrowed panel for use in closures (TS can't narrow across function boundaries)
   const currentPanel = panel;
   const panelThickMm = currentPanel.panelThickness * INCHES_TO_MM;
+  const backClearanceMm = config.drawerBackClearance * INCHES_TO_MM;
 
   function buildSegGeometry(seg: JigPanelSegment) {
     const effective = edge === "back" ? flipSegment(seg) : seg;
-    return buildJigSegmentGeometry(effective, panelThickMm);
+    return buildJigSegmentGeometry(
+      effective,
+      panelThickMm,
+      edge,
+      backClearanceMm,
+    );
   }
 
   function handleDownloadSegment() {
@@ -114,7 +127,12 @@ export default function JigView() {
       for (const e of ["front", "back"] as const) {
         for (const seg of p.segments) {
           const effective = e === "back" ? flipSegment(seg) : seg;
-          const geom = buildJigSegmentGeometry(effective, thickMm);
+          const geom = buildJigSegmentGeometry(
+            effective,
+            thickMm,
+            e,
+            backClearanceMm,
+          );
           const segSuffix =
             p.segments.length > 1 ? `-seg${String(seg.segmentIndex + 1)}` : "";
           files.push({
@@ -247,7 +265,12 @@ export default function JigView() {
         >
           <ambientLight intensity={0.5} />
           <directionalLight position={[10, 10, 5]} intensity={1} />
-          <JigMesh layout={panel} segmentIndex={safeSegIndex} edge={edge} />
+          <JigMesh
+            layout={panel}
+            segmentIndex={safeSegIndex}
+            edge={edge}
+            backClearanceMm={backClearanceMm}
+          />
           <Grid
             position={[0, -1, 0]}
             infiniteGrid
