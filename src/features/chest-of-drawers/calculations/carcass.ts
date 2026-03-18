@@ -118,7 +118,7 @@ export function getCarcassPieces(
   pieces.push({
     id: "carcass-top",
     label: "Carcass Top",
-    width: carcass.innerWidth,
+    width: carcass.outerWidth,
     height: carcass.innerDepth,
     thickness: woodAssignments.carcassTopBottom,
     quantity: 1,
@@ -127,7 +127,7 @@ export function getCarcassPieces(
   pieces.push({
     id: "carcass-bottom",
     label: "Carcass Bottom",
-    width: carcass.innerWidth,
+    width: carcass.outerWidth,
     height: carcass.innerDepth,
     thickness: woodAssignments.carcassTopBottom,
     quantity: 1,

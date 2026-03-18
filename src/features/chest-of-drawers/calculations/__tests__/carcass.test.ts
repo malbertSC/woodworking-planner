@@ -324,13 +324,13 @@ describe("getCarcassPieces", () => {
     expect(rails).toHaveLength(0);
   });
 
-  it("top and bottom width matches inner width", () => {
+  it("top and bottom width matches outer width", () => {
     const config = makeConfig();
     const carcass = calculateCarcassDimensions(config);
     const pieces = getCarcassPieces(config, carcass);
 
     const top = pieces.find((p) => p.label === "Carcass Top");
-    expect(top?.width).toBeCloseTo(carcass.innerWidth);
+    expect(top?.width).toBeCloseTo(carcass.outerWidth);
     expect(top?.height).toBeCloseTo(carcass.innerDepth);
   });
 
